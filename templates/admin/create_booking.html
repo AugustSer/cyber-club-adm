@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Создать бронирование - Компьютерный клуб{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">
+            <i class="fas fa-plus me-2"></i>Создать бронирование
+        </h1>
+        <a href="{{ url_for('admin_bookings') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Назад к бронированиям
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <form method="POST" data-validate>
+                        <div class="row g-4">
+                            <!-- Выбор клиента -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-user me-2"></i>Клиент
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Существующий клиент</label>
+                                    <select class="form-control" name="client_name" id="existingClient">
+                                        <option value="">Выберите клиента...</option>
+                                        {% for client in clients %}
+                                        <option value="{{ client.name }}">{{ client.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="text-center mb-3">
+                                    <span class="text-muted">или</span>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="new_client_name" class="form-label">Новый клиент</label>
+                                    <input type="text" class="form-control" id="new_client_name" name="new_client_name" placeholder="Введите имя нового клиента">
+                                    <div class="form-text">Если клиента нет в списке, введите его имя</div>
+                                </div>
+                            </div>
+
+                            <!-- Выбор компьютера -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-desktop me-2"></i>Компьютер
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label for="computer_id" class="form-label">Выберите компьютер *</label>
+                                    <select class="form-control" name="computer_id" id="computer_id" required>
+                                        <option value="">Выберите компьютер...</option>
+                                        {% for computer in computers %}
+                                        <option value="{{ computer.id }}" data-rate="{{ computer.hourly_rate }}">
+                                            {{ computer.name }} - {{ computer.hourly_rate }} ₽/час
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Доступны только свободные компьютеры</div>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <span id="computerInfo">Выберите компьютер для просмотра информации</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Настройки бронирования -->
+                        <div class="row g-4 mt-2">
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-clock me-2"></i>Время
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label for="planned_duration" class="form-label">Планируемое время (часы) *</label>
+                                    <input type="number" class="form-control" id="planned_duration" name="planned_duration"
+                                           min="0.5" max="12" step="0.5" value="1.0" required>
+                                    <div class="form-text">От 0.5 до 12 часов</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="start_immediately"
+                                               name="start_immediately" checked onchange="toggleScheduleTime()">
+                                        <label class="form-check-label" for="start_immediately">
+                                            Начать сессию немедленно
+                                        </label>
+                                    </div>
+                                        </div>
+
+                                    <div class="mb-3" id="schedule_time_block" style="display: none;">
+                                        <label for="scheduled_time" class="form-label">Время начала сессии</label>
+                                        <input type="datetime-local" class="form-control" id="scheduled_time" name="scheduled_time">
+                                        <div class="form-text">Выберите дату и время начала сессии</div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-calculator me-2"></i>Расчет стоимости
+                                </h5>
+
+                                <div class="bg-muted p-3 rounded">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Тариф за час:</span>
+                                        <strong id="hourlyRate">-</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Время:</span>
+                                        <strong id="selectedDuration">1.0 ч.</strong>
+                                    </div>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-warning"><strong>Итого:</strong></span>
+                                        <strong class="text-warning" id="totalCost">-</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{{ url_for('admin_bookings') }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary-custom">
+                                <i class="fas fa-save me-2"></i>Создать бронирование
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель с информацией -->
+        <div class="col-lg-4">
+            <div class="card-custom">
+                <div class="card-body">
+                    <h5 class="mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>Подсказки
+                    </h5>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Быстрое создание:</strong> Если отметить "Начать сессию немедленно",
+                        компьютер сразу станет занятым и начнется отсчет времени.
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Новый клиент:</strong> Если клиента нет в списке, введите его имя
+                        в поле "Новый клиент" и он будет автоматически добавлен.
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Тарифы:</strong> Стоимость рассчитывается автоматически
+                        на основе выбранного компьютера и времени.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статистика свободных компьютеров -->
+            <div class="card-custom mt-3">
+                <div class="card-body">
+                    <h6 class="mb-3">Свободные компьютеры</h6>
+                    {% for computer in computers %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ computer.name }}</span>
+                        <span class="badge bg-success">{{ computer.hourly_rate }} ₽/ч</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const computerSelect = document.getElementById('computer_id');
+    const durationInput = document.getElementById('planned_duration');
+    const existingClientSelect = document.getElementById('existingClient');
+    const newClientInput = document.getElementById('new_client_name');
+
+    // Обновление расчета стоимости
+    function updateCostCalculation() {
+        const selectedOption = computerSelect.options[computerSelect.selectedIndex];
+        const rate = selectedOption.dataset.rate || 0;
+        const duration = parseFloat(durationInput.value) || 0;
+        const total = rate * duration;
+
+        document.getElementById('hourlyRate').textContent = rate ? rate + ' ₽' : '-';
+        document.getElementById('selectedDuration').textContent = duration + ' ч.';
+        document.getElementById('totalCost').textContent = total ? total.toFixed(2) + ' ₽' : '-';
+
+        // Обновление информации о компьютере
+        if (selectedOption.value) {
+            document.getElementById('computerInfo').textContent =
+                `Выбран ${selectedOption.text}`;
+        } else {
+            document.getElementById('computerInfo').textContent =
+                'Выберите компьютер для просмотра информации';
+        }
+    }
+
+    computerSelect.addEventListener('change', updateCostCalculation);
+    durationInput.addEventListener('input', updateCostCalculation);
+
+    // Переключение между существующим и новым клиентом
+    existingClientSelect.addEventListener('change', function() {
+        if (this.value) {
+            newClientInput.value = '';
+            newClientInput.disabled = true;
+        } else {
+            newClientInput.disabled = false;
+        }
+    });
+
+    newClientInput.addEventListener('input', function() {
+        if (this.value.trim()) {
+            existingClientSelect.value = '';
+            existingClientSelect.disabled = true;
+        } else {
+            existingClientSelect.disabled = false;
+        }
+    });
+
+    // Установка минимального времени для планировщика
+    const scheduledTimeInput = document.getElementById('scheduled_time');
+    if (scheduledTimeInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 1); // Минимум через минуту
+        const minTime = now.toISOString().slice(0, 16);
+        scheduledTimeInput.min = minTime;
+        scheduledTimeInput.value = minTime;
+    }
+
+
+    // Валидация формы
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const existingClient = existingClientSelect.value;
+        const newClient = newClientInput.value.trim();
+
+        if (!existingClient && !newClient) {
+            e.preventDefault();
+            alert('Выберите существующего клиента или введите имя нового');
+            return false;
+        }
+
+        if (!computerSelect.value) {
+            e.preventDefault();
+            alert('Выберите компьютер');
+            return false;
+        }
+    });
+
+    // Инициализация
+    updateCostCalculation();
+});
+
+
+// Функция переключения отображения времени планирования
+function toggleScheduleTime() {
+    const checkbox = document.getElementById('start_immediately');
+    const scheduleBlock = document.getElementById('schedule_time_block');
+
+    if (checkbox.checked) {
+        scheduleBlock.style.display = 'none';
+    } else {
+        scheduleBlock.style.display = 'block';
+    }
+}
+
+</script>
+{% endblock %}

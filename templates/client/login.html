@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Вход для клиентов - Компьютерный клуб{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-7">
+            <div class="card-custom">
+                <div class="card-body p-5">
+                    <!-- Заголовок -->
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="fas fa-user-circle fa-4x gradient-text"></i>
+                        </div>
+                        <h2 class="gradient-text mb-2">Вход для клиентов</h2>
+                        <p class="text-muted">Введите ваше имя для входа в систему</p>
+                    </div>
+
+                    <!-- Форма входа -->
+                    <form method="POST" data-validate>
+                        <div class="mb-4">
+                            <label for="name" class="form-label">
+                                <i class="fas fa-user me-2"></i>Ваше имя
+                            </label>
+                            <input type="text"
+                                   class="form-control form-control-lg"
+                                   id="name"
+                                   name="name"
+                                   placeholder="Введите ваше имя"
+                                   required
+                                   autofocus>
+                            <div class="form-text">
+                                Введите имя, которое вы использовали при бронировании
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary-custom btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Войти
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Дополнительная информация -->
+                    <div class="mt-4 pt-4 border-top">
+                        <div class="row text-center">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-clock text-primary me-2"></i>
+                                    <small class="text-muted">Работаем 24/7</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-shield-alt text-success me-2"></i>
+                                    <small class="text-muted">Безопасный вход</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информационные карточки -->
+            <div class="row g-3 mt-4">
+                <div class="col-md-4">
+                    <div class="card-custom p-3 text-center">
+                        <i class="fas fa-desktop text-primary mb-2"></i>
+                        <small class="text-muted">Современное оборудование</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card-custom p-3 text-center">
+                        <i class="fas fa-wifi text-success mb-2"></i>
+                        <small class="text-muted">Высокоскоростной интернет</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card-custom p-3 text-center">
+                        <i class="fas fa-coffee text-warning mb-2"></i>
+                        <small class="text-muted">Комфортная атмосфера</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель с информацией -->
+        <div class="col-lg-4 col-md-5 mt-5 mt-md-0">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-info-circle me-2"></i>Информация
+                    </h5>
+
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-2">Тарифы</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Стандартный:</span>
+                            <strong>150 ₽/час</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Премиум:</span>
+                            <strong>200 ₽/час</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>VIP:</span>
+                            <strong>300 ₽/час</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="text-success mb-2">Услуги</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Игровые компьютеры
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Печать документов
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Сканирование
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Напитки и закуски
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Совет:</strong> Если вы новый клиент, просто введите свое имя -
+                        мы автоматически создадим вам учетную запись.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Контактная информация -->
+            <div class="card-custom mt-3">
+                <div class="card-body p-4">
+                    <h6 class="mb-3">
+                        <i class="fas fa-phone me-2"></i>Контакты
+                    </h6>
+                    <div class="mb-2">
+                        <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                        <small>ул. Игровая, 1, корп. 2</small>
+                    </div>
+                    <div class="mb-2">
+                        <i class="fas fa-phone text-success me-2"></i>
+                        <small>+7 (999) 123-45-67</small>
+                    </div>
+                    <div>
+                        <i class="fas fa-envelope text-warning me-2"></i>
+                        <small>info@gameclub.ru</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Автофокус на поле ввода при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    if (nameInput) {
+        nameInput.focus();
+    }
+
+    // Обработка Enter для быстрого входа
+    nameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (this.value.trim()) {
+                this.closest('form').submit();
+            }
+        }
+    });
+
+    // Анимация появления элементов
+    const cards = document.querySelectorAll('.card-custom');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// Валидация формы
+document.querySelector('form[data-validate]').addEventListener('submit', function(e) {
+    const nameInput = document.getElementById('name');
+    const name = nameInput.value.trim();
+
+    if (!name) {
+        e.preventDefault();
+        nameInput.focus();
+        showNotification('Пожалуйста, введите ваше имя', 'warning');
+        return false;
+    }
+
+    if (name.length < 2) {
+        e.preventDefault();
+        nameInput.focus();
+        showNotification('Имя должно содержать минимум 2 символа', 'warning');
+        return false;
+    }
+
+    // Показать индикатор загрузки
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Вход...';
+    submitBtn.disabled = true;
+
+    // Восстановить кнопку через некоторое время (на случай ошибки)
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 5000);
+});
+</script>
+{% endblock %}

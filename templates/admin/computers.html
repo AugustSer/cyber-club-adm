@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Управление компьютерами - Компьютерный клуб{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">
+            <i class="fas fa-desktop me-2"></i>Управление компьютерами
+        </h1>
+        <div>
+            <span class="badge bg-success me-2">Свободно: {{ computers|selectattr('status', 'equalto', 'available')|list|length }}</span>
+            <span class="badge bg-danger me-2">Занято: {{ computers|selectattr('status', 'equalto', 'occupied')|list|length }}</span>
+            <span class="badge bg-warning">Обслуживание: {{ computers|selectattr('status', 'equalto', 'maintenance')|list|length }}</span>
+        </div>
+    </div>
+
+    <!-- Сетка компьютеров -->
+    <div class="row g-4">
+        {% for computer in computers %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card-custom h-100" data-computer-id="{{ computer.id }}">
+                <div class="card-body p-4">
+                    <!-- Заголовок с названием и статусом -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-desktop me-2"></i>{{ computer.name }}
+                        </h5>
+                        <span class="status-badge status-{{ computer.status }}">
+                            {% if computer.status == 'available' %}Свободен
+                            {% elif computer.status == 'occupied' %}Занят
+                            {% else %}Обслуживание{% endif %}
+                        </span>
+                    </div>
+
+                    <!-- Информация о тарифе -->
+                    <div class="mb-3">
+                        <small class="text-muted">Тариф:</small>
+                        <div class="text-warning fw-bold">{{ computer.hourly_rate }} ₽/час</div>
+                    </div>
+
+                    <!-- Информация о текущем клиенте -->
+                    {% if computer.status == 'occupied' and computer.current_client %}
+                    <div class="mb-3 p-3 bg-muted rounded">
+                        <div class="current-client">
+                            <i class="fas fa-user me-1"></i>
+                            <strong>{{ computer.current_client.name }}</strong>
+                        </div>
+
+                        {% if computer.session_start %}
+                        <div class="session-time mt-2">
+                            <i class="fas fa-clock me-1"></i>
+                            Время: {{ "%.1f"|format(computer.get_current_session_duration()) }} ч.
+                        </div>
+                        <div class="current-cost">
+                            <i class="fas fa-money-bill-wave me-1"></i>
+                            Сумма: <span class="text-warning fw-bold">{{ "%.2f"|format(computer.get_current_cost()) }} ₽</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Статистика за день -->
+                    <div class="mb-3">
+                        <small class="text-muted">Часов сегодня:</small>
+                        <div>{{ "%.1f"|format(computer.total_hours_today) }} ч.</div>
+                    </div>
+
+                    <!-- Кнопки управления -->
+                    <div class="d-grid gap-2">
+                        {% if computer.status == 'available' %}
+                            <button class="btn btn-success-custom btn-start-session"
+                                    data-computer-id="{{ computer.id }}"
+                                    data-computer-name="{{ computer.name }}">
+                                <i class="fas fa-play me-2"></i>Запустить сессию
+                            </button>
+                        {% elif computer.status == 'occupied' %}
+                            <button class="btn btn-danger-custom btn-stop-session"
+                                    data-computer-id="{{ computer.id }}"
+                                    data-computer-name="{{ computer.name }}">
+                                <i class="fas fa-stop me-2"></i>Завершить сессию
+                            </button>
+                        {% else %}
+                            <button class="btn btn-warning-custom" disabled>
+                                <i class="fas fa-tools me-2"></i>На обслуживании
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Модальное окно для запуска сессии -->
+    <div class="modal fade" id="startSessionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-card">
+                <form method="POST" id="startSessionForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Запуск сессии</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="client_name" class="form-label">Имя клиента</label>
+                            <input type="text" class="form-control" id="client_name" name="client_name" required>
+                            <div class="form-text">Введите имя клиента для запуска сессии</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success-custom">
+                            <i class="fas fa-play me-2"></i>Запустить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Переопределяем функцию запуска сессии для использования модального окна
+document.addEventListener('click', function(e) {
+    if (e.target.matches('.btn-start-session')) {
+        e.preventDefault();
+        const computerId = e.target.dataset.computerId;
+        const computerName = e.target.dataset.computerName;
+
+        // Обновляем форму
+        const form = document.getElementById('startSessionForm');
+        form.action = `/admin/computers/${computerId}/start`;
+
+        // Показываем модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('startSessionModal'));
+        modal.show();
+
+        // Фокус на поле ввода
+        document.getElementById('client_name').focus();
+    }
+});
+
+// Автообновление статуса каждые 30 секунд
+setInterval(function() {
+    updateComputerStatus();
+}, 30000);
+</script>
+{% endblock %}

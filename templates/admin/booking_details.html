@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Детали бронирования #{{ booking.id }} - Компьютерный клуб{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">
+            <i class="fas fa-info-circle me-2"></i>Бронирование #{{ booking.id }}
+        </h1>
+        <div>
+            <a href="{{ url_for('edit_booking', booking_id=booking.id) }}" class="btn btn-warning-custom me-2">
+                <i class="fas fa-edit me-2"></i>Редактировать
+            </a>
+            <a href="{{ url_for('admin_bookings') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Назад к бронированиям
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Основная информация -->
+        <div class="col-lg-8">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h3 class="mb-4">
+                        <i class="fas fa-calendar-alt me-2"></i>Информация о бронировании
+                    </h3>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Статус</label>
+                                <div>
+                                    <span class="badge fs-6
+                                        {% if booking.status == 'active' %}bg-primary
+                                        {% elif booking.status == 'completed' %}bg-success
+                                        {% elif booking.status == 'scheduled' %}bg-warning
+                                        {% else %}bg-secondary{% endif %}">
+                                        {% if booking.status == 'active' %}Активно
+                                        {% elif booking.status == 'completed' %}Завершено
+                                        {% elif booking.status == 'scheduled' %}Запланировано
+                                        {% else %}{{ booking.status }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Клиент</label>
+                                <div>
+                                    <i class="fas fa-user me-1"></i>
+                                    <strong>{{ booking.client.name }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Компьютер</label>
+                                <div>
+                                    <i class="fas fa-desktop me-1"></i>
+                                    <strong>{{ booking.computer.name }}</strong>
+                                    <span class="text-muted">({{ booking.computer.hourly_rate }} ₽/час)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Время начала</label>
+                                <div>
+                                    <i class="fas fa-clock me-1"></i>
+                                    <strong>{{ booking.start_time.strftime('%d.%m.%Y %H:%M') }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Планируемая длительность</label>
+                                <div>
+                                    <i class="fas fa-hourglass-half me-1"></i>
+                                    <strong>{{ booking.planned_duration }} ч.</strong>
+                                </div>
+                            </div>
+
+                            {% if booking.actual_duration %}
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Фактическая длительность</label>
+                                <div>
+                                    <i class="fas fa-stopwatch me-1"></i>
+                                    <strong class="text-success">{{ "%.2f"|format(booking.actual_duration) }} ч.</strong>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if booking.end_time %}
+                    <div class="row g-4 mt-2">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Время завершения</label>
+                                <div>
+                                    <i class="fas fa-flag-checkered me-1"></i>
+                                    <strong>{{ booking.end_time.strftime('%d.%m.%Y %H:%M') }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Общая стоимость</label>
+                                <div>
+                                    <i class="fas fa-money-bill-wave me-1"></i>
+                                    <strong class="text-warning">{{ "%.2f"|format(booking.total_cost or booking.calculate_cost()) }} ₽</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <label class="form-label text-muted">Дата создания</label>
+                        <div>
+                            <i class="fas fa-calendar-plus me-1"></i>
+                            <span>{{ booking.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель -->
+        <div class="col-lg-4">
+            <!-- Текущий статус сессии -->
+            {% if booking.status == 'active' and booking.computer.session_start %}
+            <div class="card-custom mb-4">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-play-circle me-2"></i>Активная сессия
+                    </h5>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Время сессии</label>
+                        <div class="text-info">
+                            <strong>{{ "%.2f"|format(booking.computer.get_current_session_duration()) }} ч.</strong>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Текущая стоимость</label>
+                        <div class="text-warning">
+                            <strong>{{ "%.2f"|format(booking.computer.get_current_cost()) }} ₽</strong>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('stop_computer_session', computer_id=booking.computer.id) }}"
+                          onsubmit="return confirm('Завершить сессию?')">
+                        <button type="submit" class="btn btn-danger-custom w-100">
+                            <i class="fas fa-stop me-2"></i>Завершить сессию
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Информация о клиенте -->
+            <div class="card-custom mb-4">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-user me-2"></i>Информация о клиенте
+                    </h5>
+
+                    <div class="mb-2">
+                        <strong>{{ booking.client.name }}</strong>
+                    </div>
+
+                    {% if booking.client.email %}
+                    <div class="mb-2">
+                        <i class="fas fa-envelope me-1"></i>
+                        <small>{{ booking.client.email }}</small>
+                    </div>
+                    {% endif %}
+
+                    {% if booking.client.phone %}
+                    <div class="mb-2">
+                        <i class="fas fa-phone me-1"></i>
+                        <small>{{ booking.client.phone }}</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-2">
+                        <i class="fas fa-wallet me-1"></i>
+                        <small>Баланс: <strong>{{ "%.2f"|format(booking.client.balance) }} ₽</strong></small>
+                    </div>
+
+                    <div class="mb-2">
+                        <i class="fas fa-chart-line me-1"></i>
+                        <small>Потрачено: <strong>{{ "%.2f"|format(booking.client.total_spent) }} ₽</strong></small>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="{{ url_for('admin_clients') }}" class="btn btn-primary-custom btn-sm w-100">
+                            <i class="fas fa-eye me-1"></i>Просмотр клиентов
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Действия -->
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-cogs me-2"></i>Действия
+                    </h5>
+
+                    <div class="d-grid gap-2">
+                        {% if booking.status == 'scheduled' %}
+                        <form method="POST" action="{{ url_for('edit_booking', booking_id=booking.id) }}" style="display: inline;">
+                            <input type="hidden" name="status" value="active">
+                            <input type="hidden" name="planned_duration" value="{{ booking.planned_duration }}">
+                            <button type="submit" class="btn btn-success-custom w-100">
+                                <i class="fas fa-play me-2"></i>Активировать сейчас
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if booking.status in ['scheduled', 'active'] %}
+                        <form method="POST" action="{{ url_for('edit_booking', booking_id=booking.id) }}"
+                              onsubmit="return confirm('Отменить бронирование?')" style="display: inline;">
+                            <input type="hidden" name="status" value="cancelled">
+                            <input type="hidden" name="planned_duration" value="{{ booking.planned_duration }}">
+                            <button type="submit" class="btn btn-danger-custom w-100">
+                                <i class="fas fa-times me-2"></i>Отменить бронирование
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        <a href="{{ url_for('edit_booking', booking_id=booking.id) }}" class="btn btn-warning-custom w-100">
+                            <i class="fas fa-edit me-2"></i>Редактировать детали
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- История транзакций -->
+    {% if booking.transactions %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h3 class="mb-4">
+                        <i class="fas fa-receipt me-2"></i>История транзакций
+                    </h3>
+
+                    <div class="table-responsive">
+                        <table class="table table-dark-custom">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Тип</th>
+                                    <th>Сумма</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in booking.transactions %}
+                                <tr>
+                                    <td>{{ transaction.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge
+                                            {% if transaction.transaction_type == 'payment' %}bg-success
+                                            {% elif transaction.transaction_type == 'refund' %}bg-warning
+                                            {% else %}bg-info{% endif %}">
+                                            {% if transaction.transaction_type == 'payment' %}Оплата
+                                            {% elif transaction.transaction_type == 'refund' %}Возврат
+                                            {% else %}{{ transaction.transaction_type }}{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong class="{% if transaction.transaction_type == 'payment' %}text-success{% else %}text-warning{% endif %}">
+                                            {{ "%.2f"|format(transaction.amount) }} ₽
+                                        </strong>
+                                    </td>
+                                    <td>{{ transaction.description or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,42 +1,94 @@
 from app import db
 from datetime import datetime
-
+from sqlalchemy import func
 
 
 class Computer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
-    ip_address = db.Column(db.String(15), nullable=False)
-    status = db.Column(db.String(20), default='available')  # available, occupied, maintenance
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    name = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(20), default="available")  # available, occupied, maintenance
+    hourly_rate = db.Column(db.Float, nullable=False)
+    current_client_id = db.Column(db.Integer, db.ForeignKey('client.id'), nullable=True)
+    session_start = db.Column(db.DateTime, nullable=True)
+    total_hours_today = db.Column(db.Float, default=0.0)
+
+    # Relationships
+    current_client = db.relationship('Client', backref='current_computers')
+    bookings = db.relationship('Booking', backref='computer', lazy=True)
+
+    def __repr__(self):
+        return f'<Computer {self.name}>'
+
+    def get_current_session_duration(self):
+        if self.session_start:
+            return (datetime.now() - self.session_start).total_seconds() / 3600
+        return 0
+
+    def get_current_cost(self):
+        return self.get_current_session_duration() * self.hourly_rate
 
 
-class User(db.Model):
+class Client(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(20))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    balance = db.Column(db.Float, default=0.0)
+    total_spent = db.Column(db.Float, default=0.0)
+    registration_date = db.Column(db.DateTime, default=datetime.now)
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Relationships
+    bookings = db.relationship('Booking', backref='client', lazy=True)
+
+    def __repr__(self):
+        return f'<Client {self.name}>'
 
 
 class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('client.id'), nullable=False)
     computer_id = db.Column(db.Integer, db.ForeignKey('computer.id'), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
-    end_time = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(20), default='active')  # active, completed, cancelled
-    access_code = db.Column(db.String(10), nullable=False, unique=True)
+    end_time = db.Column(db.DateTime, nullable=True)
+    planned_duration = db.Column(db.Float, nullable=False)  # в часах
+    actual_duration = db.Column(db.Float, nullable=True)
+    total_cost = db.Column(db.Float, nullable=True)
+    status = db.Column(db.String(20), default="active")  # active, completed, cancelled
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def __repr__(self):
+        return f'<Booking {self.id}>'
+
+    def calculate_cost(self):
+        if self.actual_duration:
+            return self.actual_duration * self.computer.hourly_rate
+        return self.planned_duration * self.computer.hourly_rate
+
+
+class Tariff(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    hourly_rate = db.Column(db.Float, nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def __repr__(self):
+        return f'<Tariff {self.name}>'
+
+
+class Transaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('client.id'), nullable=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=True)
+    amount = db.Column(db.Float, nullable=False)
+    transaction_type = db.Column(db.String(20), nullable=False)  # payment, refund, topup
+    description = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', backref='bookings')
-    computer = db.relationship('Computer', backref='bookings')
-
-    def is_active_now(self):
-        """Проверяет, активна ли бронь в данный момент"""
-        now = datetime.utcnow()
-        return (self.status == 'active' and
-                self.start_time <= now <= self.end_time)
+    client = db.relationship('Client', backref='transactions')
+    booking = db.relationship('Booking', backref='transactions')
 
     def __repr__(self):
-        return f'<Booking {self.id}: {self.user.username} -> {self.computer.name}>'
+        return f'<Transaction {self.id}>'

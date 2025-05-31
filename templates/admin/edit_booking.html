@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать бронирование #{{ booking.id }} - Компьютерный клуб{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">
+            <i class="fas fa-edit me-2"></i>Редактировать бронирование #{{ booking.id }}
+        </h1>
+        <div>
+            <a href="{{ url_for('booking_details', booking_id=booking.id) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-eye me-2"></i>Просмотр
+            </a>
+            <a href="{{ url_for('admin_bookings') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>К бронированиям
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <form method="POST" data-validate>
+                        <div class="row g-4">
+                            <!-- Информация о клиенте и компьютере -->
+                            <div class="col-12">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>Основная информация
+                                </h5>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Клиент</label>
+                                        <div class="form-control-static bg-muted p-3 rounded">
+                                            <i class="fas fa-user me-1"></i>
+                                            <strong>{{ booking.client.name }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Компьютер</label>
+                                        <div class="form-control-static bg-muted p-3 rounded">
+                                            <i class="fas fa-desktop me-1"></i>
+                                            <strong>{{ booking.computer.name }}</strong>
+                                            <span class="text-muted">({{ booking.computer.hourly_rate }} ₽/час)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Время и длительность -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-clock me-2"></i>Время
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label for="start_time" class="form-label">Время начала *</label>
+                                    <input type="datetime-local" class="form-control" id="start_time" name="start_time"
+                                           value="{{ booking.start_time.strftime('%Y-%m-%dT%H:%M') }}" required>
+                                    <div class="form-text">Изменение времени может повлиять на статус</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="planned_duration" class="form-label">Планируемое время (часы) *</label>
+                                    <input type="number" class="form-control" id="planned_duration" name="planned_duration"
+                                           min="0.5" max="12" step="0.5" value="{{ booking.planned_duration }}" required>
+                                    <div class="form-text">От 0.5 до 12 часов</div>
+                                </div>
+
+                                {% if booking.actual_duration %}
+                                <div class="mb-3">
+                                    <label class="form-label">Фактическое время</label>
+                                    <div class="form-control-static bg-muted p-3 rounded">
+                                        <i class="fas fa-stopwatch me-1"></i>
+                                        <strong class="text-success">{{ "%.2f"|format(booking.actual_duration) }} ч.</strong>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Статус и стоимость -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-cog me-2"></i>Статус и стоимость
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Статус *</label>
+                                    <select class="form-control" name="status" id="status" required>
+                                        <option value="scheduled" {{ 'selected' if booking.status == 'scheduled' }}>Запланировано</option>
+                                        <option value="active" {{ 'selected' if booking.status == 'active' }}>Активно</option>
+                                        <option value="completed" {{ 'selected' if booking.status == 'completed' }}>Завершено</option>
+                                        <option value="cancelled" {{ 'selected' if booking.status == 'cancelled' }}>Отменено</option>
+                                    </select>
+                                    <div class="form-text">Изменение статуса влияет на состояние компьютера</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Расчетная стоимость</label>
+                                    <div class="bg-muted p-3 rounded">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Тариф за час:</span>
+                                            <strong>{{ booking.computer.hourly_rate }} ₽</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Время:</span>
+                                            <strong id="duration_display">{{ booking.planned_duration }} ч.</strong>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-warning"><strong>Итого:</strong></span>
+                                            <strong class="text-warning" id="total_cost">{{ "%.2f"|format(booking.planned_duration * booking.computer.hourly_rate) }} ₽</strong>
+                                        </div>
+
+                                        {% if booking.total_cost %}
+                                        <div class="mt-2 pt-2 border-top">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="text-success"><strong>Фактическая стоимость:</strong></span>
+                                                <strong class="text-success">{{ "%.2f"|format(booking.total_cost) }} ₽</strong>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Предупреждения -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Внимание:</strong> Изменение статуса может повлиять на состояние компьютера и активные сессии.
+                                </div>
+
+                                {% if booking.status == 'active' %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Активная сессия:</strong> Для изменения времени или завершения сессии используйте соответствующие кнопки.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Кнопки -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{{ url_for('booking_details', booking_id=booking.id) }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary-custom">
+                                <i class="fas fa-save me-2"></i>Сохранить изменения
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель с подсказками -->
+        <div class="col-lg-4">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>Подсказки
+                    </h5>
+
+                    <div class="alert alert-info">
+                        <strong>Статусы:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Запланировано</strong> - сессия еще не началась</li>
+                            <li><strong>Активно</strong> - сессия идет сейчас</li>
+                            <li><strong>Завершено</strong> - сессия закончена</li>
+                            <li><strong>Отменено</strong> - бронирование отменено</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Осторожно:</strong> Изменение статуса с "Активно" на другой автоматически освободит компьютер.
+                    </div>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Автоматизация:</strong> При изменении статуса на "Активно" компьютер автоматически займется.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о создании -->
+            <div class="card-custom mt-3">
+                <div class="card-body p-4">
+                    <h6 class="mb-3">Информация о создании</h6>
+                    <div class="mb-2">
+                        <i class="fas fa-calendar-plus me-1"></i>
+                        <small>Создано: {{ booking.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                    </div>
+                    <div class="mb-2">
+                        <i class="fas fa-hashtag me-1"></i>
+                        <small>ID бронирования: #{{ booking.id }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const durationInput = document.getElementById('planned_duration');
+    const hourlyRate = {{ booking.computer.hourly_rate }};
+
+    function updateCost() {
+        const duration = parseFloat(durationInput.value) || 0;
+        const total = duration * hourlyRate;
+
+        document.getElementById('duration_display').textContent = duration + ' ч.';
+        document.getElementById('total_cost').textContent = total.toFixed(2) + ' ₽';
+    }
+
+    durationInput.addEventListener('input', updateCost);
+
+    // Валидация формы
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const status = document.getElementById('status').value;
+        const startTime = new Date(document.getElementById('start_time').value);
+        const now = new Date();
+
+        if (status === 'active' && startTime > now) {
+            if (!confirm('Время начала в будущем, но статус "Активно". Продолжить?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+
+        if (status === 'scheduled' && startTime <= now) {
+            if (!confirm('Время начала уже прошло, но статус "Запланировано". Продолжить?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

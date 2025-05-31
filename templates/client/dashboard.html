@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет - {{ client.name }} - Компьютерный клуб{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Заголовок с приветствием -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="gradient-text mb-1">
+                <i class="fas fa-user-circle me-2"></i>Добро пожаловать, {{ client.name }}!
+            </h1>
+            <p class="text-muted mb-0">Управляйте своими бронированиями и отслеживайте активность</p>
+        </div>
+        <a href="{{ url_for('client_login') }}" class="btn btn-secondary">
+            <i class="fas fa-sign-out-alt me-2"></i>Выйти
+        </a>
+    </div>
+
+    <!-- Статистика клиента -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ client.balance|round(2) }} ₽</div>
+                <div class="stats-label">
+                    <i class="fas fa-wallet me-1"></i>Баланс
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number text-warning">{{ client.total_spent|round(2) }} ₽</div>
+                <div class="stats-label">
+                    <i class="fas fa-money-bill-wave me-1"></i>Всего потрачено
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number text-primary">{{ active_bookings|length }}</div>
+                <div class="stats-label">
+                    <i class="fas fa-play me-1"></i>Активные сессии
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number text-success">{{ history|length }}</div>
+                <div class="stats-label">
+                    <i class="fas fa-history me-1"></i>Всего посещений
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Активные бронирования -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h3 class="mb-4">
+                        <i class="fas fa-play-circle me-2"></i>Активные сессии
+                        {% if active_bookings %}
+                            <span class="badge bg-primary ms-2">{{ active_bookings|length }}</span>
+                        {% endif %}
+                    </h3>
+
+                    {% if active_bookings %}
+                        <div class="row g-3">
+                            {% for booking in active_bookings %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card bg-card border border-primary">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 class="card-title mb-0">
+                                                <i class="fas fa-desktop me-1"></i>{{ booking.computer.name }}
+                                            </h5>
+                                            <span class="badge bg-success pulse">Активно</span>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <small class="text-muted">Начало:</small>
+                                            <div><strong>{{ booking.start_time.strftime('%d.%m.%Y %H:%M') }}</strong></div>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <small class="text-muted">Тариф:</small>
+                                            <div><strong>{{ booking.computer.hourly_rate }} ₽/час</strong></div>
+                                        </div>
+
+                                        {% if booking.computer.session_start %}
+                                        <div class="mb-2">
+                                            <small class="text-muted">Время:</small>
+                                            <div class="text-info">
+                                                <strong>{{ "%.1f"|format(booking.computer.get_current_session_duration()) }} ч.</strong>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <small class="text-muted">Текущая стоимость:</small>
+                                            <div class="text-warning">
+                                                <strong>{{ "%.2f"|format(booking.computer.get_current_cost()) }} ₽</strong>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            <small>Обратитесь к администратору для завершения сессии</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-coffee fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Нет активных сессий</h5>
+                            <p class="text-muted mb-4">У вас сейчас нет запущенных компьютеров</p>
+                            <div class="alert alert-info d-inline-block">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                Обратитесь к администратору для создания нового бронирования
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- История посещений -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h3 class="mb-4">
+                        <i class="fas fa-history me-2"></i>История посещений
+                    </h3>
+
+                    {% if history %}
+                        <div class="table-responsive">
+                            <table class="table table-dark-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Компьютер</th>
+                                        <th>Время</th>
+                                        <th>Сумма</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for booking in history %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-calendar-alt me-1"></i>
+                                            {{ booking.start_time.strftime('%d.%m.%Y') }}
+                                            <br>
+                                            <small class="text-muted">{{ booking.start_time.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <i class="fas fa-desktop me-1"></i>
+                                            <strong>{{ booking.computer.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ booking.computer.hourly_rate }} ₽/ч</small>
+                                        </td>
+                                        <td>
+                                            {% if booking.actual_duration %}
+                                                <span class="text-success">
+                                                    <strong>{{ "%.1f"|format(booking.actual_duration) }} ч.</strong>
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">
+                                                    {{ "%.1f"|format(booking.planned_duration) }} ч. (план)
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if booking.total_cost %}
+                                                <strong class="text-warning">{{ "%.2f"|format(booking.total_cost) }} ₽</strong>
+                                            {% else %}
+                                                <span class="text-muted">
+                                                    {{ "%.2f"|format(booking.calculate_cost()) }} ₽ (расчет)
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge
+                                                {% if booking.status == 'active' %}bg-primary
+                                                {% elif booking.status == 'completed' %}bg-success
+                                                {% elif booking.status == 'scheduled' %}bg-warning
+                                                {% else %}bg-secondary{% endif %}">
+                                                {% if booking.status == 'active' %}Активно
+                                                {% elif booking.status == 'completed' %}Завершено
+                                                {% elif booking.status == 'scheduled' %}Запланировано
+                                                {% else %}{{ booking.status }}{% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if history|length > 10 %}
+                        <div class="text-center mt-3">
+                            <button class="btn btn-primary-custom" onclick="loadMoreHistory()">
+                                <i class="fas fa-chevron-down me-2"></i>Показать еще
+                            </button>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">История пуста</h5>
+                            <p class="text-muted mb-4">У вас еще нет завершенных сессий</p>
+                            <div class="alert alert-info d-inline-block">
+                                <i class="fas fa-rocket me-2"></i>
+                                Начните свою первую игровую сессию!
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Полезная информация -->
+    <div class="row g-4 mt-4">
+        <div class="col-md-6">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-question-circle me-2"></i>Часто задаваемые вопросы
+                    </h5>
+
+                    <div class="accordion accordion-flush" id="faqAccordion">
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h6 class="accordion-header">
+                                <button class="accordion-button collapsed bg-transparent text-light border-0"
+                                        type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                    Как завершить сессию?
+                                </button>
+                            </h6>
+                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Обратитесь к администратору для завершения сессии.
+                                    Он рассчитает точную стоимость и обработает оплату.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h6 class="accordion-header">
+                                <button class="accordion-button collapsed bg-transparent text-light border-0"
+                                        type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                    Как пополнить баланс?
+                                </button>
+                            </h6>
+                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Пополнение баланса производится через администратора.
+                                    Принимаем наличные и банковские карты.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item bg-transparent">
+                            <h6 class="accordion-header">
+                                <button class="accordion-button collapsed bg-transparent text-light border-0"
+                                        type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                    Можно ли забронировать компьютер?
+                                </button>
+                            </h6>
+                            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Да, обратитесь к администратору для создания бронирования
+                                    на определенное время.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card-custom">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-info-circle me-2"></i>Информация о клубе
+                    </h5>
+
+                    <div class="mb-3">
+                        <h6 class="text-primary mb-2">Режим работы</h6>
+                        <p class="mb-1"><i class="fas fa-clock me-2"></i>Круглосуточно, без выходных</p>
+                        <small class="text-muted">Администратор присутствует с 09:00 до 23:00</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="text-success mb-2">Контакты</h6>
+                        <p class="mb-1"><i class="fas fa-phone me-2"></i>+7 (999) 123-45-67</p>
+                        <p class="mb-1"><i class="fas fa-envelope me-2"></i>info@gameclub.ru</p>
+                        <p class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>ул. Игровая, 1, корп. 2</p>
+                    </div>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-gift me-2"></i>
+                        <strong>Бонус!</strong> При пополнении баланса на сумму от 1000 ₽
+                        получите скидку 5% на следующие сессии.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Автообновление активных сессий
+function updateActiveSessions() {
+    // Здесь можно добавить AJAX запрос для обновления информации об активных сессиях
+    // Пока что просто обновляем время и стоимость на странице
+    const sessionCards = document.querySelectorAll('.card.border-primary');
+
+    sessionCards.forEach(card => {
+        // Обновление времени сессии (симуляция)
+        const timeElement = card.querySelector('.text-info strong');
+        const costElement = card.querySelector('.text-warning strong');
+
+        if (timeElement && costElement) {
+            // Здесь должен быть реальный запрос к серверу
+            // Пока что просто показываем, что данные обновляются
+            timeElement.classList.add('pulse');
+            costElement.classList.add('pulse');
+        }
+    });
+}
+
+// Загрузка дополнительной истории
+function loadMoreHistory() {
+    showNotification('Загрузка дополнительной истории...', 'info');
+
+    // Здесь должен быть AJAX запрос для загрузки дополнительных записей
+    setTimeout(() => {
+        showNotification('Функция будет реализована в следующих версиях', 'info');
+    }, 1000);
+}
+
+// Автообновление каждые 30 секунд
+setInterval(updateActiveSessions, 30000);
+
+// Анимации при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Анимация появления статистики
+    const statsCards = document.querySelectorAll('.stats-card');
+    statsCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+
+    // Анимация активных сессий
+    const activeCards = document.querySelectorAll('.card.border-primary');
+    activeCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'scale(1)';
+        }, 500 + index * 150);
+    });
+});
+
+// Функция обновления времени сессии в реальном времени
+function updateSessionTimes() {
+    const timeElements = document.querySelectorAll('[data-session-start]');
+
+    timeElements.forEach(element => {
+        const startTime = new Date(element.dataset.sessionStart);
+        const now = new Date();
+        const diffHours = (now - startTime) / (1000 * 60 * 60);
+
+        element.textContent = diffHours.toFixed(1) + ' ч.';
+
+        // Обновление стоимости
+        const rate = parseFloat(element.dataset.rate || 0);
+        const costElement = element.nextElementSibling;
+        if (costElement) {
+            costElement.textContent = (diffHours * rate).toFixed(2) + ' ₽';
+        }
+    });
+}
+
+// Обновление времени каждую минуту
+setInterval(updateSessionTimes, 60000);
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+<!-- Фильтры для бронирований -->
+<div class="card-custom mb-4">
+    <div class="card-body">
+        <h5 class="mb-3">
+            <i class="fas fa-filter me-2"></i>Фильтры
+        </h5>
+        <form method="GET" id="filterForm">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="status_filter" class="form-label">Статус</label>
+                    <select class="form-control" name="status" id="status_filter">
+                        <option value="">Все статусы</option>
+                        <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>Активные</option>
+                        <option value="completed" {{ 'selected' if request.args.get('status') == 'completed' }}>Завершенные</option>
+                        <option value="scheduled" {{ 'selected' if request.args.get('status') == 'scheduled' }}>Запланированные</option>
+                        <option value="cancelled" {{ 'selected' if request.args.get('status') == 'cancelled' }}>Отмененные</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="client_filter" class="form-label">Клиент</label>
+                    <input type="text" class="form-control" name="client" id="client_filter"
+                           placeholder="Имя клиента" value="{{ request.args.get('client', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">С даты</label>
+                    <input type="date" class="form-control" name="date_from" id="date_from"
+                           value="{{ request.args.get('date_from', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">По дату</label>
+                    <input type="date" class="form-control" name="date_to" id="date_to"
+                           value="{{ request.args.get('date_to', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="fas fa-search me-1"></i>Найти
+                        </button>
+                        <a href="{{ url_for('admin_bookings') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Сброс
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

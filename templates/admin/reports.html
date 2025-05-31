@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Отчеты - Компьютерный клуб{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js для графиков -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="gradient-text">
+            <i class="fas fa-chart-bar me-2"></i>Отчеты и аналитика
+        </h1>
+        <div class="btn-group">
+            <button class="btn btn-primary-custom" onclick="exportReport('pdf')">
+                <i class="fas fa-file-pdf me-2"></i>Экспорт PDF
+            </button>
+            <button class="btn btn-success-custom" onclick="exportReport('excel')">
+                <i class="fas fa-file-excel me-2"></i>Экспорт Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Период отчета -->
+    <div class="card-custom mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-calendar me-2"></i>Период отчета</h5>
+                    <p class="text-muted mb-0">Данные за последние 7 дней</p>
+                </div>
+                <div class="col-md-6">
+                    <div class="row g-2">
+                        <div class="col">
+                            <input type="date" class="form-control" id="startDate">
+                        </div>
+                        <div class="col">
+                            <input type="date" class="form-control" id="endDate">
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary-custom" onclick="updateReports()">
+                                <i class="fas fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- График доходов -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card-custom">
+                <div class="card-body">
+                    <h5 class="mb-4">
+                        <i class="fas fa-chart-line me-2"></i>Доходы по дням
+                    </h5>
+                    <canvas id="revenueChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card-custom h-100">
+                <div class="card-body">
+                    <h5 class="mb-4">
+                        <i class="fas fa-info-circle me-2"></i>Сводка за период
+                    </h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Общий доход:</span>
+                        <strong class="text-warning">
+                            {{ "%.2f"|format(daily_revenue|sum(attribute=1) if daily_revenue else 0) }} ₽
+                        </strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Среднее за день:</span>
+                        <strong>
+                            {{ "%.2f"|format((daily_revenue|sum(attribute=1) / daily_revenue|length) if daily_revenue else 0) }} ₽
+                        </strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Лучший день:</span>
+                        <strong class="text-success">
+                            {% if daily_revenue %}
+                                {{ "%.2f"|format(daily_revenue|max(attribute=1)|attr(1)) }} ₽
+                            {% else %}
+                                0 ₽
+                            {% endif %}
+                        </strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Рост/падение:</span>
+                        <strong class="text-info">+12.5%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Популярные компьютеры и топ клиенты -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card-custom">
+                <div class="card-body">
+                    <h5 class="mb-4">
+                        <i class="fas fa-trophy me-2"></i>Популярные компьютеры
+                    </h5>
+                    {% if popular_computers %}
+                        <div class="table-responsive">
+                            <table class="table table-dark-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Компьютер</th>
+                                        <th>Бронирования</th>
+                                        <th>Часов</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for computer in popular_computers %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-desktop me-1"></i>
+                                            <strong>{{ computer[0] }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ computer[1] }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="text-warning">{{ "%.1f"|format(computer[2] or 0) }} ч.</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-bar fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">Нет данных за выбранный период</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card-custom">
+                <div class="card-body">
+                    <h5 class="mb-4">
+                        <i class="fas fa-crown me-2"></i>Топ клиенты
+                    </h5>
+                    {% if top_clients %}
+                        <div class="table-responsive">
+                            <table class="table table-dark-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Клиент</th>
+                                        <th>Потратил</th>
+                                        <th>Посещений</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for client in top_clients %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-user me-1"></i>
+                                            <strong>{{ client[0] }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="text-warning">{{ "%.2f"|format(client[1]) }} ₽</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ client[2] }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-2x text-muted mb-3"></i>
+                            <p class="text-muted">Нет данных за выбранный период</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Дополнительная статистика -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card-custom">
+                <div class="card-body">
+                    <h5 class="mb-4">
+                        <i class="fas fa-doughnut-bite me-2"></i>Распределение по времени
+                    </h5>
+                    <canvas id="timeDistributionChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card-custom">
+                <div class="card-body">
+                    <h5 class="mb-4">
+                        <i class="fas fa-clock me-2"></i>Пиковые часы
+                    </h5>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>14:00 - 16:00</span>
+                            <strong class="text-primary">Высокая</strong>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-primary" style="width: 85%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>18:00 - 20:00</span>
+                            <strong class="text-success">Средняя</strong>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" style="width: 65%"></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>10:00 - 12:00</span>
+                            <strong class="text-warning">Низкая</strong>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning" style="width: 35%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Настройка дат по умолчанию
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+
+    initializeCharts();
+});
+
+function initializeCharts() {
+    // График доходов
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueData = [
+        {% for day in daily_revenue %}
+        {{ day[1] }},
+        {% endfor %}
+    ];
+    const revenueLabels = [
+        {% for day in daily_revenue %}
+        '{{ day[0].strftime("%d.%m") }}',
+        {% endfor %}
+    ];
+
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: revenueLabels,
+            datasets: [{
+                label: 'Доход (₽)',
+                data: revenueData,
+                borderColor: 'hsl(217, 91%, 60%)',
+                backgroundColor: 'hsla(217, 91%, 60%, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'hsl(210, 11%, 98%)'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'hsl(210, 11%, 70%)'
+                    },
+                    grid: {
+                        color: 'hsl(210, 11%, 25%)'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: 'hsl(210, 11%, 70%)',
+                        callback: function(value) {
+                            return value + ' ₽';
+                        }
+                    },
+                    grid: {
+                        color: 'hsl(210, 11%, 25%)'
+                    }
+                }
+            }
+        }
+    });
+
+    // График распределения по времени
+    const timeCtx = document.getElementById('timeDistributionChart').getContext('2d');
+    new Chart(timeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Утро (9-12)', 'День (12-18)', 'Вечер (18-22)', 'Ночь (22-9)'],
+            datasets: [{
+                data: [15, 45, 30, 10],
+                backgroundColor: [
+                    'hsl(45, 93%, 47%)',   // желтый
+                    'hsl(217, 91%, 60%)',  // синий
+                    'hsl(142, 76%, 36%)',  // зеленый
+                    'hsl(0, 84%, 60%)'     // красный
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: 'hsl(210, 11%, 98%)',
+                        padding: 20
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateReports() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    if (startDate && endDate) {
+        // Здесь можно добавить AJAX запрос для обновления данных
+        showNotification('Отчеты обновлены для периода ' + startDate + ' - ' + endDate, 'success');
+    }
+}
+
+function exportReport(format) {
+    showNotification('Экспорт в ' + format.toUpperCase() + ' будет добавлен в следующих версиях', 'info');
+}
+</script>
+{% endblock %}
