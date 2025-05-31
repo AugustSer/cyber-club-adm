@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-desktop me-2"></i>
+                    Компьютеры клуба
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if computers %}
+                    <div class="row">
+                        {% for computer in computers %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card border-{% if computer.status == 'available' %}success{% elif computer.status == 'occupied' %}warning{% else %}danger{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">{{ computer.name }}</h6>
+                                        <p class="card-text small text-muted">{{ computer.ip_address }}</p>
+                                        <span class="badge bg-{% if computer.status == 'available' %}success{% elif computer.status == 'occupied' %}warning{% else %}danger{% endif %}">
+                                            {% if computer.status == 'available' %}
+                                                <i class="fas fa-check-circle me-1"></i>Свободен
+                                            {% elif computer.status == 'occupied' %}
+                                                <i class="fas fa-user me-1"></i>Занят
+                                            {% else %}
+                                                <i class="fas fa-tools me-1"></i>Обслуживание
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-desktop fa-3x mb-3"></i>
+                        <p>Компьютеры не добавлены</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>
+                    Активные брони
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if active_bookings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Пользователь</th>
+                                    <th>Компьютер</th>
+                                    <th>Код доступа</th>
+                                    <th>Время</th>
+                                    <th>Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for booking in active_bookings %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ booking.user.username }}</strong>
+                                            {% if booking.user.phone %}
+                                                <br><small class="text-muted">{{ booking.user.phone }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ booking.computer.name }}</td>
+                                        <td>
+                                            <code class="fs-6">{{ booking.access_code }}</code>
+                                        </td>
+                                        <td>
+                                            <small>
+                                                {{ booking.start_time.strftime('%d.%m %H:%M') }} -
+                                                {{ booking.end_time.strftime('%d.%m %H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if booking.is_active_now() %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-play me-1"></i>Активна
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-clock me-1"></i>Ожидание
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('cancel_booking', booking_id=booking.id) }}"
+                                               class="btn btn-sm btn-outline-danger"
+                                               onclick="return confirm('Отменить бронь?')">
+                                                <i class="fas fa-times"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                        <p>Активных броней нет</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Добавить компьютер
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_computer') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               placeholder="PC-01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ip_address" class="form-label">IP адрес</label>
+                        <input type="text" class="form-control" id="ip_address" name="ip_address"
+                               placeholder="192.168.1.100" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-1"></i>Добавить
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calendar-plus me-2"></i>
+                    Создать бронь
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('create_booking') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Имя пользователя</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Телефон (необязательно)</label>
+                        <input type="tel" class="form-control" id="phone" name="phone"
+                               placeholder="+7 (xxx) xxx-xx-xx">
+                    </div>
+                    <div class="mb-3">
+                        <label for="computer_id" class="form-label">Компьютер</label>
+                        <select class="form-select" id="computer_id" name="computer_id" required>
+                            <option value="">Выберите компьютер</option>
+                            {% for computer in computers %}
+                                {% if computer.status == 'available' %}
+                                    <option value="{{ computer.id }}">{{ computer.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="start_time" class="form-label">Время начала</label>
+                        <input type="datetime-local" class="form-control" id="start_time" name="start_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="duration_hours" class="form-label">Продолжительность (часы)</label>
+                        <select class="form-select" id="duration_hours" name="duration_hours" required>
+                            <option value="1">1 час</option>
+                            <option value="2">2 часа</option>
+                            <option value="3">3 часа</option>
+                            <option value="4">4 часа</option>
+                            <option value="6">6 часов</option>
+                            <option value="8">8 часов</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-calendar-check me-1"></i>Создать бронь
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Устанавливаем минимальное время как текущее
+    document.addEventListener('DOMContentLoaded', function() {
+        const startTimeInput = document.getElementById('start_time');
+        if (startTimeInput) {
+            const now = new Date();
+            // Добавляем 1 минуту к текущему времени
+            now.setMinutes(now.getMinutes() + 1);
+
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+
+            const dateTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+            startTimeInput.value = dateTimeString;
+            startTimeInput.min = dateTimeString;
+        }
+    });
+</script>
+{% endblock %}
