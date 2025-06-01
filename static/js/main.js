@@ -1,234 +1,322 @@
-// Главный JavaScript файл для компьютерного клуба
+// Основной JavaScript файл для кибер-клуба
 
+// Глобальные переменные
+let currentUser = null;
+let bookingsData = [];
+let computersData = [];
+let customersData = [];
+
+// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
+// Основная функция инициализации
 function initializeApp() {
-    // Инициализация всех компонентов
-    initAutoRefresh();
-    initAnimations();
-    initFormValidation();
-    initTooltips();
+    console.log('Initializing Cyber Club Management System...');
 
-    console.log('Computer Club Management System initialized');
+    // Инициализация Bootstrap компонентов
+    initializeBootstrapComponents();
+
+    // Загрузка данных
+    loadInitialData();
+
+    // Настройка обработчиков событий
+    setupEventListeners();
+
+    // Инициализация форм
+    initializeForms();
 }
 
-// Автообновление статуса компьютеров
-function initAutoRefresh() {
-    if (window.location.pathname.includes('/admin/computers') || window.location.pathname === '/admin') {
-        updateComputerStatus();
-        setInterval(updateComputerStatus, 30000); // Обновление каждые 30 секунд
+// Инициализация Bootstrap компонентов
+function initializeBootstrapComponents() {
+    // Инициализация всех tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Инициализация всех popovers
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+}
+
+// Загрузка начальных данных
+function loadInitialData() {
+    // Проверяем, на какой странице мы находимся
+    const currentPage = getCurrentPage();
+
+    switch(currentPage) {
+        case 'index':
+            loadDashboardData();
+            break;
+        case 'bookings':
+            // Данные загружаются на странице бронирований
+            break;
+        case 'reports':
+            // Данные загружаются на странице отчетов
+            break;
     }
 }
 
-async function updateComputerStatus() {
+// Определение текущей страницы
+function getCurrentPage() {
+    const path = window.location.pathname;
+    if (path === '/' || path === '/index') return 'index';
+    if (path.includes('bookings')) return 'bookings';
+    if (path.includes('reports')) return 'reports';
+    return 'unknown';
+}
+
+// Загрузка данных для дашборда
+function loadDashboardData() {
+    Promise.all([
+        fetchData('/api/bookings'),
+        fetchData('/api/computers'),
+        fetchData('/api/customers')
+    ])
+    .then(([bookings, computers, customers]) => {
+        bookingsData = bookings;
+        computersData = computers;
+        customersData = customers;
+
+        updateDashboardStats();
+    })
+    .catch(error => {
+        console.error('Error loading dashboard data:', error);
+        showNotification('Ошибка загрузки данных', 'error');
+    });
+}
+
+// Обновление статистики на дашборде
+function updateDashboardStats() {
+    // Активные бронирования
+    const activeBookings = bookingsData.filter(b => b.status === 'active').length;
+    updateElement('active-bookings', activeBookings);
+
+    // Доход за сегодня
+    const today = new Date().toISOString().split('T')[0];
+    const todayBookings = bookingsData.filter(b =>
+        b.start_time.startsWith(today) && b.status !== 'cancelled'
+    );
+    const todayRevenue = todayBookings.reduce((sum, booking) => sum + (booking.total_cost || 0), 0);
+    updateElement('today-revenue', `${todayRevenue.toFixed(2)} ₽`);
+
+    // Свободные компьютеры
+    const availableComputers = computersData.filter(c => c.status === 'available').length;
+    updateElement('available-computers', availableComputers);
+
+    // Всего клиентов
+    updateElement('total-customers', customersData.length);
+}
+
+// Настройка обработчиков событий
+function setupEventListeners() {
+    // Обработка кликов по кнопкам экспорта
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.export-btn, .export-btn *')) {
+            const btn = e.target.closest('.export-btn');
+            if (btn) {
+                const format = btn.dataset.format;
+                const reportId = btn.dataset.reportId;
+                if (format && reportId) {
+                    exportReport(reportId, format);
+                }
+            }
+        }
+    });
+
+    // Обработка изменений в формах
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('.auto-calculate')) {
+            calculateBookingCost();
+        }
+    });
+
+    // Обработка submit форм
+    document.addEventListener('submit', function(e) {
+        if (e.target.matches('.ajax-form')) {
+            e.preventDefault();
+            handleFormSubmit(e.target);
+        }
+    });
+}
+
+// Инициализация форм
+function initializeForms() {
+    // Установка значений по умолчанию для дат
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    const today = new Date().toISOString().split('T')[0];
+
+    dateInputs.forEach(input => {
+        if (!input.value) {
+            input.value = today;
+        }
+    });
+
+    // Установка значений по умолчанию для datetime-local
+    const datetimeInputs = document.querySelectorAll('input[type="datetime-local"]');
+    const now = new Date();
+    const defaultStart = new Date(now.getTime() + 60 * 60 * 1000); // +1 час
+    const defaultEnd = new Date(defaultStart.getTime() + 2 * 60 * 60 * 1000); // +2 часа
+
+    datetimeInputs.forEach((input, index) => {
+        if (!input.value) {
+            if (index % 2 === 0) { // Четные - время начала
+                input.value = defaultStart.toISOString().slice(0, 16);
+            } else { // Нечетные - время окончания
+                input.value = defaultEnd.toISOString().slice(0, 16);
+            }
+        }
+    });
+}
+
+// Универсальная функция для выполнения HTTP запросов
+async function fetchData(url, options = {}) {
     try {
-        const response = await fetch('/api/computers/status');
-        const computers = await response.json();
-
-        // Обновление статуса на странице компьютеров
-        computers.forEach(computer => {
-            updateComputerCard(computer);
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
         });
 
-        // Обновление дашборда
-        updateDashboardStats(computers);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
+        return await response.json();
     } catch (error) {
-        console.error('Ошибка обновления статуса:', error);
+        console.error(`Error fetching data from ${url}:`, error);
+        throw error;
     }
 }
 
-function updateComputerCard(computer) {
-    const card = document.querySelector(`[data-computer-id="${computer.id}"]`);
-    if (!card) return;
-
-    // Обновление статуса
-    const statusBadge = card.querySelector('.status-badge');
-    if (statusBadge) {
-        statusBadge.className = `status-badge status-${computer.status}`;
-        statusBadge.textContent = getStatusText(computer.status);
+// Функция для безопасного обновления элементов
+function updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value;
     }
+}
 
-    // Обновление информации о текущем клиенте
-    const clientInfo = card.querySelector('.current-client');
-    if (clientInfo) {
-        if (computer.current_client) {
-            clientInfo.textContent = `Клиент: ${computer.current_client}`;
-            clientInfo.style.display = 'block';
+// Функция показа уведомлений
+function showNotification(message, type = 'info', duration = 5000) {
+    const alertClass = {
+        'success': 'alert-success',
+        'error': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[type] || 'alert-info';
+
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px;';
+    alert.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${getIconForType(type)} me-2"></i>
+            <span>${message}</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alert);
+
+    // Автоматическое удаление
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, duration);
+
+    return alert;
+}
+
+// Получение иконки для типа уведомления
+function getIconForType(type) {
+    const icons = {
+        'success': 'check-circle',
+        'error': 'exclamation-triangle',
+        'warning': 'exclamation-circle',
+        'info': 'info-circle'
+    };
+    return icons[type] || 'info-circle';
+}
+
+// Функция обработки отправки форм
+async function handleFormSubmit(form) {
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    const url = form.action || form.dataset.action;
+    const method = form.method || 'POST';
+
+    try {
+        const response = await fetchData(url, {
+            method: method,
+            body: JSON.stringify(data)
+        });
+
+        if (response.success) {
+            showNotification('Операция выполнена успешно!', 'success');
+
+            // Закрытие модального окна если есть
+            const modal = form.closest('.modal');
+            if (modal) {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+
+            // Перезагрузка страницы или обновление данных
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         } else {
-            clientInfo.style.display = 'none';
+            showNotification(response.message || 'Ошибка при выполнении операции', 'error');
         }
-    }
-
-    // Обновление времени сессии
-    const sessionTime = card.querySelector('.session-time');
-    if (sessionTime && computer.session_duration > 0) {
-        sessionTime.textContent = `Время: ${computer.session_duration.toFixed(2)} ч.`;
-        sessionTime.style.display = 'block';
-    } else if (sessionTime) {
-        sessionTime.style.display = 'none';
-    }
-
-    // Обновление стоимости
-    const currentCost = card.querySelector('.current-cost');
-    if (currentCost && computer.current_cost > 0) {
-        currentCost.textContent = `Сумма: ${computer.current_cost.toFixed(2)} ₽`;
-        currentCost.style.display = 'block';
-    } else if (currentCost) {
-        currentCost.style.display = 'none';
+    } catch (error) {
+        console.error('Form submission error:', error);
+        showNotification('Ошибка при отправке данных', 'error');
     }
 }
 
-function updateDashboardStats(computers) {
-    const occupied = computers.filter(c => c.status === 'occupied').length;
-    const available = computers.filter(c => c.status === 'available').length;
-
-    // Обновление счетчиков на дашборде
-    const occupiedElement = document.getElementById('occupied-count');
-    const availableElement = document.getElementById('available-count');
-
-    if (occupiedElement) {
-        animateNumber(occupiedElement, occupied);
-    }
-
-    if (availableElement) {
-        animateNumber(availableElement, available);
-    }
-}
-
-function getStatusText(status) {
-    const statusMap = {
-        'available': 'Свободен',
-        'occupied': 'Занят',
-        'maintenance': 'Обслуживание'
-    };
-    return statusMap[status] || status;
-}
-
-// Анимации
-function initAnimations() {
-    // Анимация появления карточек
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('fade-in');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, observerOptions);
-
-    // Наблюдение за карточками
-    document.querySelectorAll('.card-custom, .stats-card').forEach(card => {
-        observer.observe(card);
-    });
-}
-
-function animateNumber(element, targetNumber) {
-    const currentNumber = parseInt(element.textContent) || 0;
-    const increment = targetNumber > currentNumber ? 1 : -1;
-
-    if (currentNumber === targetNumber) return;
-
-    const timer = setInterval(() => {
-        const current = parseInt(element.textContent) || 0;
-        const next = current + increment;
-
-        element.textContent = next;
-
-        if (next === targetNumber) {
-            clearInterval(timer);
-        }
-    }, 50);
-}
-
-// Валидация форм
-function initFormValidation() {
-    const forms = document.querySelectorAll('form[data-validate]');
-
-    forms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            if (!validateForm(this)) {
-                e.preventDefault();
-            }
-        });
-    });
-}
-
+// Функция для валидации форм
 function validateForm(form) {
-    let isValid = true;
     const requiredFields = form.querySelectorAll('[required]');
+    let isValid = true;
 
     requiredFields.forEach(field => {
         if (!field.value.trim()) {
-            showFieldError(field, 'Это поле обязательно для заполнения');
+            field.classList.add('is-invalid');
             isValid = false;
         } else {
-            clearFieldError(field);
+            field.classList.remove('is-invalid');
         }
     });
 
     return isValid;
 }
 
-function showFieldError(field, message) {
-    clearFieldError(field);
+// Функция форматирования дат
+function formatDate(dateString, options = {}) {
+    const date = new Date(dateString);
+    const defaultOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
 
-    field.classList.add('is-invalid');
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'invalid-feedback';
-    errorDiv.textContent = message;
-
-    field.parentNode.appendChild(errorDiv);
+    return date.toLocaleDateString('ru-RU', { ...defaultOptions, ...options });
 }
 
-function clearFieldError(field) {
-    field.classList.remove('is-invalid');
-    const errorDiv = field.parentNode.querySelector('.invalid-feedback');
-    if (errorDiv) {
-        errorDiv.remove();
-    }
-}
-
-// Инициализация всплывающих подсказок
-function initTooltips() {
-    // Использование Bootstrap tooltips если они доступны
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-    }
-}
-
-// Утилитарные функции
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} notification`;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        animation: slideIn 0.3s ease;
-    `;
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
+// Функция форматирования валюты
 function formatCurrency(amount) {
     return new Intl.NumberFormat('ru-RU', {
         style: 'currency',
@@ -236,83 +324,81 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-function formatDuration(hours) {
-    const h = Math.floor(hours);
-    const m = Math.floor((hours - h) * 60);
-    return `${h}ч ${m}м`;
-}
+// Функция для работы с Local Storage
+const Storage = {
+    set(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+            console.error('Error saving to localStorage:', error);
+        }
+    },
 
-// Обработчики событий для кнопок
-document.addEventListener('click', function(e) {
-    // Кнопка запуска сессии
-    if (e.target.matches('.btn-start-session')) {
-        handleStartSession(e);
+    get(key, defaultValue = null) {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : defaultValue;
+        } catch (error) {
+            console.error('Error reading from localStorage:', error);
+            return defaultValue;
+        }
+    },
+
+    remove(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.error('Error removing from localStorage:', error);
+        }
+    },
+
+    clear() {
+        try {
+            localStorage.clear();
+        } catch (error) {
+            console.error('Error clearing localStorage:', error);
+        }
     }
-
-    // Кнопка остановки сессии
-    if (e.target.matches('.btn-stop-session')) {
-        handleStopSession(e);
-    }
-
-    // Кнопка создания бронирования
-    if (e.target.matches('.btn-create-booking')) {
-        window.location.href = '/admin/bookings/create';
-    }
-});
-
-function handleStartSession(e) {
-    const computerId = e.target.dataset.computerId;
-    const computerName = e.target.dataset.computerName;
-
-    const clientName = prompt(`Запуск сессии на ${computerName}\nВведите имя клиента:`);
-
-    if (clientName && clientName.trim()) {
-        // Отправка формы
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/computers/${computerId}/start`;
-
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'client_name';
-        input.value = clientName.trim();
-
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-function handleStopSession(e) {
-    const computerId = e.target.dataset.computerId;
-    const computerName = e.target.dataset.computerName;
-
-    if (confirm(`Завершить сессию на ${computerName}?`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/computers/${computerId}/stop`;
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Функции для работы с местным временем
-function updateClocks() {
-    const clocks = document.querySelectorAll('.live-clock');
-    clocks.forEach(clock => {
-        clock.textContent = new Date().toLocaleTimeString('ru-RU');
-    });
-}
-
-// Обновление часов каждую секунду
-setInterval(updateClocks, 1000);
-updateClocks();
-
-// Экспорт для использования в других скриптах
-window.ComputerClub = {
-    updateComputerStatus,
-    showNotification,
-    formatCurrency,
-    formatDuration
 };
+
+// Функция для дебаунсинга
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Функция для троттлинга
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    }
+}
+
+// Экспорт функций для использования в других файлах
+window.CyberClub = {
+    showNotification,
+    fetchData,
+    updateElement,
+    formatDate,
+    formatCurrency,
+    Storage,
+    debounce,
+    throttle
+};
+
+// Логирование успешной инициализации
+console.log('Cyber Club Management System initialized successfully!');

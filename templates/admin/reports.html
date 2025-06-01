@@ -1,279 +1,902 @@
-
-
-<!DOCTYPE html>
-
 {% extends "base.html" %}
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Отчеты - АРМ Администратора</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .report-card {
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border: none;
-            margin-bottom: 2rem;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            text-align: center;
-            padding: 1.5rem;
-            border-radius: 10px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-        }
-        .chart-container {
-            position: relative;
-            height: 400px;
-            width: 100%;
-        }
-        .table-responsive {
-            border-radius: 8px;
-            overflow: hidden;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/admin">АРМ Администратора</a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="/admin">Дашборд</a>
-                <a class="nav-link" href="/admin/clients">Клиенты</a>
-                <a class="nav-link" href="/admin/computers">Компьютеры</a>
-                <a class="nav-link active" href="/admin/reports">Отчеты</a>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h2>Отчеты и аналитика</h2>
-                <p class="text-muted">Данные за {{ "сегодня (%s)"|format(datetime.now().strftime('%d.%m.%Y')) }}</p>
-            </div>
-        </div>
-        <!-- Общая статистика -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h5>Сессий сегодня</h5>
-                <h3>{{ today_sessions|length }}</h3>
-            </div>
-            <div class="stat-card">
-                <h5>Выручка за неделю</h5>
-                <h3>{{ "%.2f"|format(week_revenue[-1].revenue if week_revenue else 0) }} ₽</h3>
-            </div>
-            <div class="stat-card">
-                <h5>Активные клиенты</h5>
-                <h3>{{ today_sessions|map(attribute='client_id')|unique|list|length }}</h3>
-            </div>
-            <div class="stat-card">
-                <h5>Загрузка компьютеров</h5>
-                <h3>{{ "%.1f"|format((computer_stats|length / 20 * 100) if computer_stats else 0) }}%</h3>
-            </div>
-        </div>
-        <div class="row">
-            <!-- График выручки за неделю -->
-            <div class="col-md-6">
-                <div class="card report-card">
-                    <div class="card-header">
-                        <h5 class="mb-0">💰 Выручка за неделю</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="revenueChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Дополнительная статистика -->
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <div class="card-custom">
-                <div class="card-body">
-                    <h5 class="mb-4">
-                        <i class="fas fa-doughnut-bite me-2"></i>Распределение по времени
-                    </h5>
-                    <canvas id="timeDistributionChart" height="100"></canvas>
-                </div>
-            </div>
-        </div>
+{% block title %}Отчеты - Кибер-клуб{% endblock %}
 
-        <div class="col-lg-4">
-            <div class="card-custom">
-                <div class="card-body">
-                    <h5 class="mb-4">
-                        <i class="fas fa-clock me-2"></i>Пиковые часы
-                    </h5>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>14:00 - 16:00</span>
-                            <strong class="text-primary">Высокая</strong>
-                        </div>
-                        <div class="progress">
-                            <div class="progress-bar bg-primary" style="width: 85%"></div>
-                        </div>
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-chart-bar me-2"></i>Отчеты и аналитика</h1>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+        <i class="fas fa-plus me-2"></i>Создать отчет
+    </button>
+</div>
+
+<!-- Актуальная статистика -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="card-title mb-1">
+                            <i class="fas fa-chart-line me-2"></i>Актуальные данные из бронирований
+                        </h5>
+                        <p class="card-text mb-0">Просмотрите текущую статистику и создайте отчеты на основе реальных данных</p>
                     </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>18:00 - 20:00</span>
-                            <strong class="text-success">Средняя</strong>
-                        </div>
-                        <div class="progress">
-                            <div class="progress-bar bg-success" style="width: 65%"></div>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>10:00 - 12:00</span>
-                            <strong class="text-warning">Низкая</strong>
-                        </div>
-                        <div class="progress">
-                            <div class="progress-bar bg-warning" style="width: 35%"></div>
-                        </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-light" onclick="showLiveStats()">
+                            <i class="fas fa-eye me-2"></i>Показать статистику
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-</body>
+
+<!-- Быстрые отчеты -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-day fa-2x text-primary mb-2"></i>
+                <h5 class="card-title">За сегодня</h5>
+                <button class="btn btn-outline-primary btn-sm" onclick="generateQuickReport('today')">
+                    Создать отчет
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-week fa-2x text-success mb-2"></i>
+                <h5 class="card-title">За неделю</h5>
+                <button class="btn btn-outline-success btn-sm" onclick="generateQuickReport('week')">
+                    Создать отчет
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-alt fa-2x text-info mb-2"></i>
+                <h5 class="card-title">За месяц</h5>
+                <button class="btn btn-outline-info btn-sm" onclick="generateQuickReport('month')">
+                    Создать отчет
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar fa-2x text-warning mb-2"></i>
+                <h5 class="card-title">Произвольный</h5>
+                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                    Создать отчет
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Список отчетов -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>Созданные отчеты
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if reports %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Тип</th>
+                            <th>Период</th>
+                            <th>Бронирования</th>
+                            <th>Доход</th>
+                            <th>Часы</th>
+                            <th>Создан</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td>{{ report.id }}</td>
+                            <td>{{ report.title }}</td>
+                            <td>
+                                {% set type_names = {
+                                    'daily': 'Дневной',
+                                    'weekly': 'Недельный',
+                                    'monthly': 'Месячный',
+                                    'custom': 'Произвольный'
+                                } %}
+                                <span class="badge bg-info">
+                                    {{ type_names.get(report.report_type, report.report_type) }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ report.start_date.strftime('%d.%m.%Y') }} -
+                                {{ report.end_date.strftime('%d.%m.%Y') }}
+                            </td>
+                            <td>{{ report.total_bookings }}</td>
+                            <td>{{ "%.2f"|format(report.total_revenue) }} ₽</td>
+                            <td>{{ "%.1f"|format(report.total_hours) }} ч</td>
+                            <td>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-info"
+                                            onclick="showReportDetails({{ report.id }})"
+                                            title="Подробности">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-success"
+                                            onclick="exportReport({{ report.id }}, 'excel')"
+                                            title="Экспорт в Excel">
+                                        <i class="fas fa-file-excel"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary"
+                                            onclick="exportReport({{ report.id }}, 'word')"
+                                            title="Экспорт в Word">
+                                        <i class="fas fa-file-word"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">Нет отчетов</h4>
+                <p class="text-muted">Создайте первый отчет для анализа данных</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                    <i class="fas fa-plus me-2"></i>Создать отчет
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно создания отчета -->
+<div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-chart-line me-2"></i>Создать отчет
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="generateReportForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="reportTitle" class="form-label">Название отчета *</label>
+                        <input type="text" class="form-control" id="reportTitle" required
+                               placeholder="Введите название отчета">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reportType" class="form-label">Тип отчета</label>
+                        <select class="form-select" id="reportType">
+                            <option value="custom">Произвольный период</option>
+                            <option value="daily">Дневной</option>
+                            <option value="weekly">Недельный</option>
+                            <option value="monthly">Месячный</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reportStartDate" class="form-label">Дата начала *</label>
+                                <input type="date" class="form-control" id="reportStartDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reportEndDate" class="form-label">Дата окончания *</label>
+                                <input type="date" class="form-control" id="reportEndDate" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-chart-line me-2"></i>Создать отчет
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подробностей отчета -->
+<div class="modal fade" id="reportDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-chart-bar me-2"></i>Подробности отчета
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="reportDetailsContent">
+                <!-- Содержимое будет загружено динамически -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="exportCurrentReport('excel')">
+                        <i class="fas fa-file-excel me-2"></i>Excel
+                    </button>
+                    <button class="btn btn-primary" onclick="exportCurrentReport('word')">
+                        <i class="fas fa-file-word me-2"></i>Word
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно актуальной статистики -->
+<div class="modal fade" id="liveStatsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-chart-line me-2"></i>Актуальная статистика
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="liveStatsContent">
+                <div class="text-center py-4">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-2">Загрузка актуальных данных...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button class="btn btn-primary" onclick="createReportFromLiveStats()">
+                    <i class="fas fa-save me-2"></i>Создать отчет на основе данных
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}
 
 {% block extra_scripts %}
 <script>
-// Настройка дат по умолчанию
-document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+let currentReportId = null;
 
-    document.getElementById('endDate').value = today.toISOString().split('T')[0];
-    document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+// Обработка формы создания отчета
+document.getElementById('generateReportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
 
-    initializeCharts();
+    const formData = {
+        title: document.getElementById('reportTitle').value,
+        report_type: document.getElementById('reportType').value,
+        start_date: document.getElementById('reportStartDate').value,
+        end_date: document.getElementById('reportEndDate').value
+    };
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создается...';
+    submitBtn.disabled = true;
+
+    fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Показать успешное уведомление
+            showNotification('Отчет успешно создан!', 'success');
+
+            // Закрыть модальное окно
+            const modal = bootstrap.Modal.getInstance(document.getElementById('generateReportModal'));
+            modal.hide();
+
+            // Обновить страницу через небольшую задержку
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showNotification('Ошибка при создании отчета', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка при создании отчета', 'error');
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
 });
 
-function initializeCharts() {
-    // График доходов
-    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    const revenueData = [
-        {% for day in daily_revenue %}
-        {{ day[1] }},
-        {% endfor %}
-    ];
-    const revenueLabels = [
-        {% for day in daily_revenue %}
-        '{{ day[0] }}',
-        {% endfor %}
-    ];
+// Функция быстрого создания отчета
+function generateQuickReport(type) {
+    const today = new Date();
+    let startDate, endDate, title;
 
-    new Chart(revenueCtx, {
-        type: 'line',
-        data: {
-            labels: revenueLabels,
-            datasets: [{
-                label: 'Доход (₽)',
-                data: revenueData,
-                borderColor: 'hsl(217, 91%, 60%)',
-                backgroundColor: 'hsla(217, 91%, 60%, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: 'hsl(210, 11%, 98%)'
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        color: 'hsl(210, 11%, 70%)'
-                    },
-                    grid: {
-                        color: 'hsl(210, 11%, 25%)'
-                    }
-                },
-                y: {
-                    ticks: {
-                        color: 'hsl(210, 11%, 70%)',
-                        callback: function(value) {
-                            return value + ' ₽';
-                        }
-                    },
-                    grid: {
-                        color: 'hsl(210, 11%, 25%)'
-                    }
-                }
-            }
-        }
-    });
+    switch(type) {
+        case 'today':
+            startDate = endDate = today.toISOString().split('T')[0];
+            title = `Отчет за ${today.toLocaleDateString('ru-RU')}`;
+            break;
+        case 'week':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay() + 1); // Понедельник
+            startDate = weekStart.toISOString().split('T')[0];
+            endDate = today.toISOString().split('T')[0];
+            title = `Недельный отчет (${weekStart.toLocaleDateString('ru-RU')} - ${today.toLocaleDateString('ru-RU')})`;
+            break;
+        case 'month':
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            startDate = monthStart.toISOString().split('T')[0];
+            endDate = today.toISOString().split('T')[0];
+            title = `Месячный отчет за ${today.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`;
+            break;
+    }
 
-    // График распределения по времени
-    const timeCtx = document.getElementById('timeDistributionChart').getContext('2d');
-    new Chart(timeCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Утро (9-12)', 'День (12-18)', 'Вечер (18-22)', 'Ночь (22-9)'],
-            datasets: [{
-                data: [15, 45, 30, 10],
-                backgroundColor: [
-                    'hsl(45, 93%, 47%)',   // желтый
-                    'hsl(217, 91%, 60%)',  // синий
-                    'hsl(142, 76%, 36%)',  // зеленый
-                    'hsl(0, 84%, 60%)'     // красный
-                ],
-                borderWidth: 0
-            }]
+    const formData = {
+        title: title,
+        report_type: type === 'today' ? 'daily' : type === 'week' ? 'weekly' : 'monthly',
+        start_date: startDate,
+        end_date: endDate
+    };
+
+    fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: 'hsl(210, 11%, 98%)',
-                        padding: 20
-                    }
-                }
-            }
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Отчет успешно создан!', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showNotification('Ошибка при создании отчета', 'error');
         }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка при создании отчета', 'error');
     });
 }
 
-function updateReports() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+// Функция экспорта отчета
+function exportReport(reportId, format) {
+    const link = document.createElement('a');
+    link.href = `/api/reports/${reportId}/export/${format}`;
+    link.download = `report_${reportId}.${format === 'excel' ? 'xlsx' : 'docx'}`;
 
-    if (startDate && endDate) {
-        // Здесь можно добавить AJAX запрос для обновления данных
-        showNotification('Отчеты обновлены для периода ' + startDate + ' - ' + endDate, 'success');
+    showNotification(`Начинается экспорт в ${format.toUpperCase()}...`, 'info');
+
+    // Добавляем обработчик для проверки успешности загрузки
+    link.addEventListener('click', function() {
+        setTimeout(() => {
+            showNotification(`Файл ${format.toUpperCase()} готов к скачиванию!`, 'success');
+        }, 1000);
+    });
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Функция показа актуальной статистики
+function showLiveStats() {
+    const modal = new bootstrap.Modal(document.getElementById('liveStatsModal'));
+    modal.show();
+
+    // Загрузка актуальных данных из бронирований
+    Promise.all([
+        fetch('/api/bookings').then(r => r.json()),
+        fetch('/api/computers').then(r => r.json()),
+        fetch('/api/customers').then(r => r.json())
+    ])
+    .then(([bookings, computers, customers]) => {
+        const content = generateLiveStatsContent(bookings, computers, customers);
+        document.getElementById('liveStatsContent').innerHTML = content;
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки данных:', error);
+        document.getElementById('liveStatsContent').innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                <p class="text-muted">Ошибка загрузки актуальных данных</p>
+            </div>
+        `;
+    });
+}
+
+// Генерация содержимого для актуальной статистики
+function generateLiveStatsContent(bookings, computers, customers) {
+    const today = new Date().toISOString().split('T')[0];
+    const thisWeek = getWeekRange(new Date());
+    const thisMonth = getMonthRange(new Date());
+
+    // Статистика за сегодня
+    const todayBookings = bookings.filter(b => b.start_time.startsWith(today));
+    const todayRevenue = todayBookings.reduce((sum, b) => sum + (b.total_cost || 0), 0);
+    const todayHours = todayBookings.reduce((sum, b) => sum + (b.duration_hours || 0), 0);
+
+    // Статистика за неделю
+    const weekBookings = bookings.filter(b => {
+        const bookingDate = new Date(b.start_time);
+        return bookingDate >= thisWeek.start && bookingDate <= thisWeek.end;
+    });
+    const weekRevenue = weekBookings.reduce((sum, b) => sum + (b.total_cost || 0), 0);
+    const weekHours = weekBookings.reduce((sum, b) => sum + (b.duration_hours || 0), 0);
+
+    // Статистика за месяц
+    const monthBookings = bookings.filter(b => {
+        const bookingDate = new Date(b.start_time);
+        return bookingDate >= thisMonth.start && bookingDate <= thisMonth.end;
+    });
+    const monthRevenue = monthBookings.reduce((sum, b) => sum + (b.total_cost || 0), 0);
+    const monthHours = monthBookings.reduce((sum, b) => sum + (b.duration_hours || 0), 0);
+
+    // Популярные компьютеры
+    const computerStats = {};
+    bookings.forEach(booking => {
+        const compName = booking.computer_name;
+        if (!computerStats[compName]) {
+            computerStats[compName] = 0;
+        }
+        computerStats[compName]++;
+    });
+    const popularComputers = Object.entries(computerStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    // Активные бронирования
+    const activeBookings = bookings.filter(b => b.status === 'active');
+    const availableComputers = computers.filter(c => c.status === 'available');
+
+    return `
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-calendar-day fa-2x mb-2"></i>
+                        <h5>Сегодня</h5>
+                        <p class="mb-1"><strong>${todayBookings.length}</strong> бронирований</p>
+                        <p class="mb-1"><strong>${todayRevenue.toFixed(2)} ₽</strong> доход</p>
+                        <p class="mb-0"><strong>${todayHours.toFixed(1)} ч</strong> игрового времени</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-calendar-week fa-2x mb-2"></i>
+                        <h5>Эта неделя</h5>
+                        <p class="mb-1"><strong>${weekBookings.length}</strong> бронирований</p>
+                        <p class="mb-1"><strong>${weekRevenue.toFixed(2)} ₽</strong> доход</p>
+                        <p class="mb-0"><strong>${weekHours.toFixed(1)} ч</strong> игрового времени</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                        <h5>Этот месяц</h5>
+                        <p class="mb-1"><strong>${monthBookings.length}</strong> бронирований</p>
+                        <p class="mb-1"><strong>${monthRevenue.toFixed(2)} ₽</strong> доход</p>
+                        <p class="mb-0"><strong>${monthHours.toFixed(1)} ч</strong> игрового времени</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-desktop me-2"></i>Статус компьютеров</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2"><i class="fas fa-play text-danger me-2"></i>Активных бронирований: <strong>${activeBookings.length}</strong></p>
+                        <p class="mb-2"><i class="fas fa-check text-success me-2"></i>Свободных компьютеров: <strong>${availableComputers.length}</strong></p>
+                        <p class="mb-0"><i class="fas fa-users text-info me-2"></i>Всего клиентов: <strong>${customers.length}</strong></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-star me-2"></i>Популярные компьютеры</h6>
+                    </div>
+                    <div class="card-body">
+                        ${popularComputers.length > 0 ?
+                            popularComputers.map(([name, count]) =>
+                                `<p class="mb-1">${name}: <strong>${count}</strong> бронирований</p>`
+                            ).join('') :
+                            '<p class="text-muted mb-0">Нет данных о бронированиях</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-list me-2"></i>Последние бронирования</h6>
+                    </div>
+                    <div class="card-body">
+                        ${bookings.length > 0 ?
+                            `<div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Компьютер</th>
+                                            <th>Клиент</th>
+                                            <th>Время</th>
+                                            <th>Статус</th>
+                                            <th>Стоимость</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${bookings.slice(0, 10).map(booking => `
+                                            <tr>
+                                                <td>${booking.computer_name}</td>
+                                                <td>${booking.customer_name}</td>
+                                                <td>${new Date(booking.start_time).toLocaleString('ru-RU')}</td>
+                                                <td><span class="badge bg-${getStatusColor(booking.status)}">${getStatusName(booking.status)}</span></td>
+                                                <td>${booking.total_cost ? booking.total_cost.toFixed(2) + ' ₽' : '-'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>` :
+                            '<p class="text-muted mb-0">Нет бронирований для отображения</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Вспомогательные функции
+function getWeekRange(date) {
+    const start = new Date(date);
+    start.setDate(date.getDate() - date.getDay() + 1); // Понедельник
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6); // Воскресенье
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+}
+
+function getMonthRange(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'active': 'success',
+        'completed': 'secondary',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStatusName(status) {
+    const names = {
+        'active': 'Активное',
+        'completed': 'Завершено',
+        'cancelled': 'Отменено'
+    };
+    return names[status] || status;
+}
+
+// Функция создания отчета на основе актуальных данных
+function createReportFromLiveStats() {
+    const today = new Date();
+    const title = `Актуальный отчет от ${today.toLocaleDateString('ru-RU')}`;
+    const startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+    const endDate = today.toISOString().split('T')[0];
+
+    const formData = {
+        title: title,
+        report_type: 'monthly',
+        start_date: startDate,
+        end_date: endDate
+    };
+
+    fetch('/api/reports', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Отчет успешно создан на основе актуальных данных!', 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('liveStatsModal'));
+            modal.hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification('Ошибка при создании отчета', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        showNotification('Ошибка при создании отчета', 'error');
+    });
+}
+
+// Функция показа подробностей отчета
+function showReportDetails(reportId) {
+    currentReportId = reportId;
+
+    // Загружаем детальную информацию об отчете
+    fetch(`/api/reports/${reportId}`)
+        .then(response => response.json())
+        .then(data => {
+            const content = generateReportDetailsContent(data);
+            document.getElementById('reportDetailsContent').innerHTML = content;
+            const modal = new bootstrap.Modal(document.getElementById('reportDetailsModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки отчета:', error);
+            const content = `
+                <div class="text-center py-4">
+                    <h4>Подробности отчета #${reportId}</h4>
+                    <p class="text-muted">Ошибка загрузки данных отчета</p>
+                    <div class="row mt-4">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-calendar-check fa-2x text-success mb-2"></i>
+                                    <h5>Бронирования</h5>
+                                    <h3 class="text-success">-</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-ruble-sign fa-2x text-primary mb-2"></i>
+                                    <h5>Доход</h5>
+                                    <h3 class="text-primary">- ₽</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                                    <h5>Часы</h5>
+                                    <h3 class="text-info">- ч</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('reportDetailsContent').innerHTML = content;
+            const modal = new bootstrap.Modal(document.getElementById('reportDetailsModal'));
+            modal.show();
+        });
+}
+
+// Функция генерации содержимого детального отчета
+function generateReportDetailsContent(report) {
+    return `
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-calendar-check fa-2x mb-2"></i>
+                        <h5>Бронирования</h5>
+                        <h3>${report.total_bookings}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-ruble-sign fa-2x mb-2"></i>
+                        <h5>Доход</h5>
+                        <h3>${report.total_revenue.toFixed(2)} ₽</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-2x mb-2"></i>
+                        <h5>Часы</h5>
+                        <h3>${report.total_hours.toFixed(1)} ч</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-star me-2"></i>Популярные компьютеры</h6>
+                    </div>
+                    <div class="card-body">
+                        ${report.data && report.data.popular_computers ?
+                            report.data.popular_computers.map(([name, count]) =>
+                                `<p class="mb-1">${name}: <strong>${count}</strong> бронирований</p>`
+                            ).join('') :
+                            '<p class="text-muted mb-0">Нет данных</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i>Пиковые часы</h6>
+                    </div>
+                    <div class="card-body">
+                        ${report.data && report.data.peak_hours ?
+                            report.data.peak_hours.map(([hour, count]) =>
+                                `<p class="mb-1">${hour.toString().padStart(2, '0')}:00 - <strong>${count}</strong> бронирований</p>`
+                            ).join('') :
+                            '<p class="text-muted mb-0">Нет данных</p>'
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        ${report.data && report.data.daily_breakdown ? `
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-calendar me-2"></i>Ежедневная статистика</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Дата</th>
+                                            <th>Бронирования</th>
+                                            <th>Доход</th>
+                                            <th>Часы</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(report.data.daily_breakdown)
+                                            .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+                                            .map(([date, stats]) => `
+                                                <tr>
+                                                    <td>${new Date(date).toLocaleDateString('ru-RU')}</td>
+                                                    <td>${stats.bookings}</td>
+                                                    <td>${stats.revenue.toFixed(2)} ₽</td>
+                                                    <td>${stats.hours.toFixed(1)} ч</td>
+                                                </tr>
+                                            `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
+
+// Функция экспорта текущего отчета из модального окна
+function exportCurrentReport(format) {
+    if (currentReportId) {
+        exportReport(currentReportId, format);
     }
 }
 
-function exportReport(format) {
-    showNotification('Экспорт в ' + format.toUpperCase() + ' будет добавлен в следующих версиях', 'info');
+// Функция уведомлений
+function showNotification(message, type = 'info') {
+    if (window.CyberClub && window.CyberClub.showNotification) {
+        window.CyberClub.showNotification(message, type);
+    } else {
+        // Создаем уведомление вручную
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        document.body.appendChild(alert);
+
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
 }
+
+// Функция показа уведомлений
+function showNotification(message, type) {
+    const alertClass = type === 'success' ? 'alert-success' :
+                      type === 'error' ? 'alert-danger' :
+                      type === 'info' ? 'alert-info' : 'alert-warning';
+
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alert);
+
+    // Автоматическое удаление через 5 секунд
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+// Установка дат по умолчанию
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(today.getDate() - 7);
+
+    document.getElementById('reportStartDate').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('reportEndDate').value = today.toISOString().split('T')[0];
+});
 </script>
 {% endblock %}
