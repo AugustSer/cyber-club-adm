@@ -339,6 +339,11 @@ def admin_reports():
         func.date(Transaction.created_at) >= week_ago
     ).group_by(func.date(Transaction.created_at)).all()
 
+    daily_revenue_formatted = [
+        (day[0].strftime("%d.%m") if hasattr(day[0], 'strftime') else day[0], day[1])
+        for day in daily_revenue
+    ]
+
     # Популярные компьютеры
     popular_computers = db.session.query(
         Computer.name,
@@ -358,9 +363,10 @@ def admin_reports():
     ).group_by(Client.id).order_by(func.sum(Transaction.amount).desc()).limit(10).all()
 
     return render_template('admin/reports.html',
-                           daily_revenue=daily_revenue,
+                           daily_revenue=daily_revenue_formatted,
                            popular_computers=popular_computers,
-                           top_clients=top_clients)
+                           top_clients=top_clients,
+                           datetime=datetime)
 
 
 # Клиентские маршруты
@@ -418,3 +424,153 @@ def api_computers_status():
             'current_cost': computer.get_current_cost()
         })
     return jsonify(data)
+
+
+# API для клиентского терминала
+@app.route('/api/client/register', methods=['POST'])
+def api_client_register():
+    """API регистрации клиента"""
+    data = request.get_json()
+    name = data.get('name')
+    phone = data.get('phone')
+    email = data.get('email')
+
+    if not name or not phone:
+        return jsonify({'message': 'Имя и телефон обязательны'}), 400
+
+    # Проверяем уникальность телефона
+    existing_client = Client.query.filter_by(phone=phone).first()
+    if existing_client:
+        return jsonify({'message': 'Клиент с таким телефоном уже существует'}), 400
+
+    client = Client(name=name, phone=phone, email=email)
+    db.session.add(client)
+    db.session.commit()
+
+    return jsonify({
+        'client_id': client.id,
+        'message': 'Клиент зарегистрирован успешно'
+    })
+
+
+@app.route('/api/client/login', methods=['POST'])
+def api_client_login():
+    """API авторизации клиента"""
+    data = request.get_json()
+    phone = data.get('phone')
+
+    if not phone:
+        return jsonify({'message': 'Номер телефона обязателен'}), 400
+
+    client = Client.query.filter_by(phone=phone).first()
+    if not client:
+        return jsonify({'message': 'Клиент с таким телефоном не найден'}), 404
+
+    return jsonify({
+        'client_id': client.id,
+        'name': client.name,
+        'balance': client.balance
+    })
+
+
+@app.route('/api/client/<int:client_id>')
+def api_client_info(client_id):
+    """API получения информации о клиенте"""
+    client = Client.query.get_or_404(client_id)
+
+    # Получаем доступные компьютеры
+    available_computers = Computer.query.filter_by(status='available').all()
+
+    # Получаем активные бронирования клиента
+    active_bookings = Booking.query.filter_by(
+        client_id=client_id,
+        status='active'
+    ).all()
+
+    return jsonify({
+        'id': client.id,
+        'name': client.name,
+        'phone': client.phone,
+        'balance': client.balance,
+        'total_spent': client.total_spent,
+        'available_computers': [
+            {
+                'id': comp.id,
+                'name': comp.name,
+                'hourly_rate': comp.hourly_rate
+            } for comp in available_computers
+        ],
+        'active_bookings': [
+            {
+                'id': booking.id,
+                'computer_name': booking.computer.name,
+                'start_time': booking.start_time.strftime('%Y-%m-%d %H:%M'),
+                'end_time': booking.end_time.strftime('%Y-%m-%d %H:%M') if booking.end_time else None
+            } for booking in active_bookings
+        ]
+    })
+
+
+@app.route('/api/client/book', methods=['POST'])
+def api_client_book():
+    """API бронирования компьютера"""
+    data = request.get_json()
+    client_id = data.get('client_id')
+    computer_id = data.get('computer_id')
+    duration_hours = float(data.get('duration_hours', 1))
+
+    client = Client.query.get_or_404(client_id)
+    computer = Computer.query.get_or_404(computer_id)
+
+    # Рассчитываем стоимость
+    total_cost = duration_hours * computer.hourly_rate
+
+    # Проверяем баланс
+    if client.balance < total_cost:
+        return jsonify({
+            'message': f'Недостаточно средств. Нужно {total_cost} руб., доступно {client.balance} руб.'
+        }), 400
+
+    # Проверяем доступность компьютера
+    if computer.status != 'available':
+        return jsonify({'message': 'Компьютер недоступен'}), 400
+
+    # Создаем бронь
+    start_time = datetime.now()
+    end_time = start_time + timedelta(hours=duration_hours)
+
+    booking = Booking(
+        client_id=client_id,
+        computer_id=computer_id,
+        start_time=start_time,
+        end_time=end_time,
+        planned_duration=duration_hours,
+        total_cost=total_cost,
+        status='active'
+    )
+
+    # Обновляем статус компьютера
+    computer.status = 'occupied'
+    computer.current_client_id = client_id
+    computer.session_start = start_time
+
+    # Списываем средства
+    client.balance -= total_cost
+
+    # Создаем транзакцию оплаты
+    transaction = Transaction(
+        client_id=client_id,
+        booking_id=booking.id,
+        amount=-total_cost,
+        transaction_type='payment',
+        description=f'Оплата за {duration_hours}ч на {computer.name}'
+    )
+
+    db.session.add(booking)
+    db.session.add(transaction)
+    db.session.commit()
+
+    return jsonify({
+        'booking_id': booking.id,
+        'message': 'Бронирование создано успешно'
+    })

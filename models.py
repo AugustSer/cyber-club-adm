@@ -35,6 +35,8 @@ class Client(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     balance = db.Column(db.Float, default=0.0)
     total_spent = db.Column(db.Float, default=0.0)
+    total_time_minutes = db.Column(db.Integer, default=0)
+    last_visit = db.Column(db.DateTime, nullable=True)
     registration_date = db.Column(db.DateTime, default=datetime.now)
     is_active = db.Column(db.Boolean, default=True)
 
@@ -43,6 +45,28 @@ class Client(db.Model):
 
     def __repr__(self):
         return f'<Client {self.name}>'
+
+    def get_recent_sessions(self, limit=5):
+        """Получить последние сессии клиента"""
+        return Booking.query.filter_by(client_id=self.id) \
+            .order_by(Booking.created_at.desc()) \
+            .limit(limit).all()
+
+    def get_total_sessions(self):
+        """Общее количество сессий"""
+        return Booking.query.filter_by(client_id=self.id, status='completed').count()
+
+    def update_stats(self):
+        """Обновить статистику клиента"""
+        completed_bookings = Booking.query.filter_by(client_id=self.id, status='completed').all()
+
+        self.total_spent = sum(booking.total_cost or 0 for booking in completed_bookings)
+        self.total_time_minutes = sum(int((booking.actual_duration or 0) * 60) for booking in completed_bookings)
+
+        if completed_bookings:
+            self.last_visit = max(booking.end_time for booking in completed_bookings if booking.end_time)
+
+        db.session.commit()
 
 
 class Booking(db.Model):

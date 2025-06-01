@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Клиентский терминал</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .register-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .register-header {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .btn-large {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 50px;
+        }
+        .form-control-large {
+            font-size: 1.1em;
+            padding: 12px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="register-card">
+                    <div class="register-header">
+                        <h2 class="mb-0">📝 Регистрация</h2>
+                        <p class="mb-0 mt-2">Создание нового аккаунта</p>
+                    </div>
+
+                    <div class="p-4">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Ваше имя *</label>
+                                <input type="text" class="form-control form-control-large" id="name" name="name"
+                                       placeholder="Введите ваше имя" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Номер телефона *</label>
+                                <input type="tel" class="form-control form-control-large" id="phone" name="phone"
+                                       placeholder="+7 (999) 123-45-67" required>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="email" class="form-label">Email (необязательно)</label>
+                                <input type="email" class="form-control form-control-large" id="email" name="email"
+                                       placeholder="your@email.com">
+                                <small class="text-muted">Для получения уведомлений и чеков</small>
+                            </div>
+
+                            <div class="d-grid gap-3">
+                                <button type="submit" class="btn btn-success btn-large">
+                                    Зарегистрироваться
+                                </button>
+                                <a href="/" class="btn btn-outline-primary btn-large">
+                                    Уже есть аккаунт? Войти
+                                </a>
+                            </div>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <small class="text-muted">
+                                Регистрируясь, вы соглашаетесь с правилами кибер-клуба<br>
+                                Ваш номер телефона будет использоваться для входа в систему
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Форматирование номера телефона
+        document.getElementById('phone').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                if (value[0] === '8') value = '7' + value.slice(1);
+                if (value[0] === '7') {
+                    value = '+7 (' + value.slice(1, 4) + ') ' + value.slice(4, 7) + '-' + value.slice(7, 9) + '-' + value.slice(9, 11);
+                }
+            }
+            e.target.value = value;
+        });
+    </script>
+</body>
+</html>

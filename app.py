@@ -36,6 +36,8 @@ with app.app_context():
     import models
     import routes
 
+
+
     # Create all tables
     db.create_all()
 
