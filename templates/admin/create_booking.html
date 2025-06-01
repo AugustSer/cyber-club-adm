@@ -98,7 +98,9 @@
 
                                     <div class="mb-3" id="schedule_time_block" style="display: none;">
                                         <label for="scheduled_time" class="form-label">Время начала сессии</label>
-                                        <input type="datetime-local" class="form-control" id="scheduled_time" name="scheduled_time">
+                                        <input type="datetime-local" id="scheduled_time" name="scheduled_time"
+       value="{{ current_time.strftime('%Y-%m-%dT%H:%M') }}">
+
                                         <div class="form-text">Выберите дату и время начала сессии</div>
                                 </div>
                             </div>

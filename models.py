@@ -108,7 +108,7 @@ class Transaction(db.Model):
     amount = db.Column(db.Float, nullable=False)
     transaction_type = db.Column(db.String(20), nullable=False)  # payment, refund, topup
     description = db.Column(db.String(200), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships
     client = db.relationship('Client', backref='transactions')

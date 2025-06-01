@@ -54,12 +54,7 @@
                             <i class="fas fa-users me-1"></i>Клиенты
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'admin_reports' %}active{% endif %}"
-                           href="{{ url_for('admin_reports') }}">
-                            <i class="fas fa-chart-bar me-1"></i>Отчеты
-                        </a>
-                    </li>
+
                 </ul>
 
                 <ul class="navbar-nav">
@@ -71,7 +66,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('client_login') }}">
-                            <i class="fas fa-user me-1"></i>Клиентский вход
+                            <i class="fas fa-user me-1"></i>Привет, admin
                         </a>
                     </li>
                 </ul>

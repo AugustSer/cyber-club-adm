@@ -3,6 +3,7 @@ from app import app, db
 from models import Computer, Client, Booking, Tariff, Transaction
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
+from zoneinfo import ZoneInfo
 
 
 def _activate_scheduled_bookings():
@@ -243,7 +244,9 @@ def edit_booking(booking_id):
 def create_booking():
     computers = Computer.query.filter_by(status='available').all()
     clients = Client.query.filter_by(is_active=True).all()
-    return render_template('admin/create_booking.html', computers=computers, clients=clients)
+    tz = ZoneInfo("Asia/Tokyo")  # UTC+9
+    current_time = datetime.now(tz)
+    return render_template('admin/create_booking.html', computers=computers, clients=clients,current_time=current_time)
 
 
 @app.route('/admin/bookings/create', methods=['POST'])
